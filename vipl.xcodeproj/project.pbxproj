@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		851040D62951B1FE00320EC7 /* RangeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851040D52951B1FE00320EC7 /* RangeSlider.swift */; };
+		851040D829540F8E00320EC7 /* AVPlayerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851040D729540F8E00320EC7 /* AVPlayerController.swift */; };
+		85169D4D294AA664007C081F /* CaptureView.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 85169D4C294AA664007C081F /* CaptureView.storyboard */; };
+		85169D4F294AA8EB007C081F /* CapturePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85169D4E294AA8EB007C081F /* CapturePreviewView.swift */; };
+		85169D51294AAE71007C081F /* CaptureViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85169D50294AAE71007C081F /* CaptureViewController.swift */; };
 		85AC1B09293EBAEE00CA4556 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AC1B08293EBAEE00CA4556 /* AppDelegate.swift */; };
 		85AC1B0B293EBAEE00CA4556 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AC1B0A293EBAEE00CA4556 /* SceneDelegate.swift */; };
 		85AC1B0D293EBAEE00CA4556 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AC1B0C293EBAEE00CA4556 /* ViewController.swift */; };
@@ -16,6 +21,9 @@
 		85AC1B20293EBAEF00CA4556 /* viplTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AC1B1F293EBAEF00CA4556 /* viplTests.swift */; };
 		85AC1B2A293EBAEF00CA4556 /* viplUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AC1B29293EBAEF00CA4556 /* viplUITests.swift */; };
 		85AC1B2C293EBAEF00CA4556 /* viplUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AC1B2B293EBAEF00CA4556 /* viplUITestsLaunchTests.swift */; };
+		85AC1B772947BBB900CA4556 /* PlayerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AC1B762947BBB900CA4556 /* PlayerViewController.swift */; };
+		85DE2CB52947BF8300BBFCA8 /* PlayerView.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 85DE2CB42947BF8300BBFCA8 /* PlayerView.storyboard */; };
+		85DE2CBB2948496700BBFCA8 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85DE2CBA2948496700BBFCA8 /* PlayerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -36,6 +44,11 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		851040D52951B1FE00320EC7 /* RangeSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RangeSlider.swift; sourceTree = "<group>"; };
+		851040D729540F8E00320EC7 /* AVPlayerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVPlayerController.swift; sourceTree = "<group>"; };
+		85169D4C294AA664007C081F /* CaptureView.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = CaptureView.storyboard; sourceTree = "<group>"; };
+		85169D4E294AA8EB007C081F /* CapturePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturePreviewView.swift; sourceTree = "<group>"; };
+		85169D50294AAE71007C081F /* CaptureViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureViewController.swift; sourceTree = "<group>"; };
 		85AC1B05293EBAEE00CA4556 /* vipl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = vipl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		85AC1B08293EBAEE00CA4556 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		85AC1B0A293EBAEE00CA4556 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -49,6 +62,9 @@
 		85AC1B25293EBAEF00CA4556 /* viplUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = viplUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		85AC1B29293EBAEF00CA4556 /* viplUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = viplUITests.swift; sourceTree = "<group>"; };
 		85AC1B2B293EBAEF00CA4556 /* viplUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = viplUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		85AC1B762947BBB900CA4556 /* PlayerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerViewController.swift; sourceTree = "<group>"; };
+		85DE2CB42947BF8300BBFCA8 /* PlayerView.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = PlayerView.storyboard; sourceTree = "<group>"; };
+		85DE2CBA2948496700BBFCA8 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -99,12 +115,17 @@
 		85AC1B07293EBAEE00CA4556 /* vipl */ = {
 			isa = PBXGroup;
 			children = (
+				85AC1B7A2947BECA00CA4556 /* Views */,
 				85AC1B08293EBAEE00CA4556 /* AppDelegate.swift */,
 				85AC1B0A293EBAEE00CA4556 /* SceneDelegate.swift */,
 				85AC1B0C293EBAEE00CA4556 /* ViewController.swift */,
-				85AC1B0E293EBAEE00CA4556 /* Main.storyboard */,
+				85DE2CBA2948496700BBFCA8 /* PlayerView.swift */,
+				85AC1B762947BBB900CA4556 /* PlayerViewController.swift */,
+				85169D4E294AA8EB007C081F /* CapturePreviewView.swift */,
+				85169D50294AAE71007C081F /* CaptureViewController.swift */,
+				851040D729540F8E00320EC7 /* AVPlayerController.swift */,
+				851040D52951B1FE00320EC7 /* RangeSlider.swift */,
 				85AC1B11293EBAEF00CA4556 /* Assets.xcassets */,
-				85AC1B13293EBAEF00CA4556 /* LaunchScreen.storyboard */,
 				85AC1B16293EBAEF00CA4556 /* Info.plist */,
 			);
 			path = vipl;
@@ -125,6 +146,17 @@
 				85AC1B2B293EBAEF00CA4556 /* viplUITestsLaunchTests.swift */,
 			);
 			path = viplUITests;
+			sourceTree = "<group>";
+		};
+		85AC1B7A2947BECA00CA4556 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				85AC1B0E293EBAEE00CA4556 /* Main.storyboard */,
+				85AC1B13293EBAEF00CA4556 /* LaunchScreen.storyboard */,
+				85DE2CB42947BF8300BBFCA8 /* PlayerView.storyboard */,
+				85169D4C294AA664007C081F /* CaptureView.storyboard */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -231,6 +263,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				85DE2CB52947BF8300BBFCA8 /* PlayerView.storyboard in Resources */,
+				85169D4D294AA664007C081F /* CaptureView.storyboard in Resources */,
 				85AC1B15293EBAEF00CA4556 /* LaunchScreen.storyboard in Resources */,
 				85AC1B12293EBAEF00CA4556 /* Assets.xcassets in Resources */,
 				85AC1B10293EBAEE00CA4556 /* Main.storyboard in Resources */,
@@ -258,7 +292,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				85169D4F294AA8EB007C081F /* CapturePreviewView.swift in Sources */,
 				85AC1B0D293EBAEE00CA4556 /* ViewController.swift in Sources */,
+				851040D829540F8E00320EC7 /* AVPlayerController.swift in Sources */,
+				85169D51294AAE71007C081F /* CaptureViewController.swift in Sources */,
+				85AC1B772947BBB900CA4556 /* PlayerViewController.swift in Sources */,
+				851040D62951B1FE00320EC7 /* RangeSlider.swift in Sources */,
+				85DE2CBB2948496700BBFCA8 /* PlayerView.swift in Sources */,
 				85AC1B09293EBAEE00CA4556 /* AppDelegate.swift in Sources */,
 				85AC1B0B293EBAEE00CA4556 /* SceneDelegate.swift in Sources */,
 			);
@@ -440,16 +480,23 @@
 				DEVELOPMENT_TEAM = 46PJ3YDAKX;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = vipl/Info.plist;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "<TBD>";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "<TBD>";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "<TBD>";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "<TBD>";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportsDocumentBrowser = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.charlanxcc.vipl;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -468,16 +515,23 @@
 				DEVELOPMENT_TEAM = 46PJ3YDAKX;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = vipl/Info.plist;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "<TBD>";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "<TBD>";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "<TBD>";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "<TBD>";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportsDocumentBrowser = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.charlanxcc.vipl;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
