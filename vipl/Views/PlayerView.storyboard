@@ -101,14 +101,13 @@
                                 </menu>
                                 <state key="normal" title="Play Speed"/>
                             </button>
-                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="9W0-A1-4BE">
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" showsMenuAsPrimaryAction="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="9W0-A1-4BE">
                                 <rect key="frame" x="97" y="749" width="34" height="22"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
                                 <state key="normal" image="quotelevel" catalog="system"/>
                                 <connections>
                                     <action selector="setLowerUpperBounds:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="QH2-l4-A5G"/>
-                                    <action selector="stepForward:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="m79-KQ-geB"/>
                                 </connections>
                             </button>
                         </subviews>

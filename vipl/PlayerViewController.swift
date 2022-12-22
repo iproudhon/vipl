@@ -210,6 +210,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         guard let url = url else { return }
         setupPlaySpeedMenu()
         setupSaveMenu()
+        setupRangeMenu()
 
         playerView.player = player
         setupPlayerObservers()
@@ -244,6 +245,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         self.url = url
         setupPlaySpeedMenu()
         setupSaveMenu()
+        setupRangeMenu()
         
         playerView.player = player
         setupPlayerObservers()
@@ -284,7 +286,39 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         })
         options.insert(item, at: 0)
         let menu = UIMenu(title: "Save", children: options)
+        
+        saveButton.showsMenuAsPrimaryAction = true
         saveButton.menu = menu
+    }
+    
+    func setupRangeMenu() {
+        var options = [UIAction]()
+        var item = UIAction(title: "Reset", state: .off, handler: { _ in
+            self.rangeSlider.lowerBound = self.rangeSlider.min
+            self.rangeSlider.upperBound = self.rangeSlider.max
+            self.setupPlayRange(self.rangeSlider.min, self.rangeSlider.max)
+        })
+        options.insert(item, at: 0)
+        item = UIAction(title: "1.5 : 1.5", state: .off, handler: { _ in
+            var lower = Swift.max(self.rangeSlider.min, self.rangeSlider.thumb - CGFloat(1.5))
+            var upper = Swift.min(self.rangeSlider.thumb + CGFloat(1.5), self.rangeSlider.max)
+            self.rangeSlider.lowerBound = lower
+            self.rangeSlider.upperBound = upper
+            self.setupPlayRange(lower, upper)
+        })
+        options.insert(item, at: 0)
+        item = UIAction(title: "2.0 : 8.0", state: .off, handler: { _ in
+            var lower = Swift.max(self.rangeSlider.min, self.rangeSlider.thumb - CGFloat(2.0))
+            var upper = Swift.min(self.rangeSlider.thumb + CGFloat(8.0), self.rangeSlider.max)
+            self.rangeSlider.lowerBound = lower
+            self.rangeSlider.upperBound = upper
+            self.setupPlayRange(lower, upper)
+        })
+        options.insert(item, at: 0)
+
+        let menu = UIMenu(title: "Ranges", children: options)
+        rangeButton.showsMenuAsPrimaryAction = true
+        rangeButton.menu = menu
     }
     
     func setupPlayerObservers() {
