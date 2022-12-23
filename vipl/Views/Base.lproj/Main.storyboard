@@ -44,6 +44,15 @@
                                     <action selector="pickDocument:" destination="BYZ-38-t0r" eventType="touchUpInside" id="hNB-of-Xof"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="5PU-YS-8AI">
+                                <rect key="frame" x="168" y="537" width="79" height="35"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="plain" title="Swings"/>
+                                <connections>
+                                    <action selector="swingCollection:" destination="BYZ-38-t0r" eventType="touchUpInside" id="HL0-7u-xt2"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>

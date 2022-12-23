@@ -62,6 +62,13 @@ class ViewController: UIViewController, PHPickerViewControllerDelegate,   UIDocu
         }
     }
     
+    @IBAction func swingCollection(_ sender: Any) {
+        guard let controller = UIStoryboard(name: "CollectionView", bundle: nil).instantiateInitialViewController() as? CollectionViewController else { return }
+        controller.loadViewIfNeeded()
+        controller.modalPresentationStyle = .fullScreen
+        present(controller, animated: true)
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
