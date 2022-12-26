@@ -146,7 +146,7 @@ extension CollectionViewController {
                 let uti = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, ext as CFString, nil)
                 if UTTypeConformsTo((uti?.takeRetainedValue())!, kUTTypeMovie) {
                     let attr = try FileManager.default.attributesOfItem(atPath: url.path)
-                    let (thumbnail, creationDate) = getThumbnail(url: url)
+                    let (thumbnail, creationDate) = CollectionViewController.getThumbnail(url: url)
                     let swingItem = SwingItem(url: url, creationDate: creationDate, meta: "", thumbnail: thumbnail)
                     swingItems.append(swingItem)
                 }
@@ -161,7 +161,7 @@ extension CollectionViewController {
         }
     }
     
-    func getThumbnail(url: URL) -> (UIImage?, Date?) {
+    static func getThumbnail(url: URL) -> (UIImage?, Date?) {
         let asset = AVAsset(url: url)
         let date = asset.creationDate?.value as? Date
         let assetImgGenerate = AVAssetImageGenerator(asset: asset)
@@ -284,16 +284,6 @@ extension CollectionViewController {
         if !cell.tapRegistered {
             cell.addGestureRecognizer(UITapGestureRecognizer(target: cell, action: #selector(cell.tap(_:))))
         }
-
-/*
-        cell.backgroundColor = .red
-        cell.label.text = "\(data[indexPath[1]])"
-        cell.label.textColor = .green
-        cell.label.textAlignment = .center
-        let x = (cell.frame.width - cell.label.frame.width) / 2
-        let y = (cell.frame.height - cell.label.frame.height) / 2
-        cell.label.frame = CGRect(origin: CGPoint(x: x, y: y), size: cell.label.frame.size)
- */
         return cell
     }
 }

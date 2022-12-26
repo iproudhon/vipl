@@ -101,10 +101,10 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             return fileName.path
         }
     }
-    
+
     @IBAction func save(asNew: Bool) {
         guard let currentItem = self.player.currentItem else { return }
-        
+
         let url: URL!
         if !asNew {
             let fn = NSUUID().uuidString
@@ -118,6 +118,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         let exporter = AVAssetExportSession(asset: currentItem.asset, presetName: AVAssetExportPresetHEVCHighestQuality)
 
         exporter?.videoComposition = currentItem.videoComposition
+        exporter?.metadata = currentItem.asset.metadata
         exporter?.outputURL = url
         exporter?.outputFileType = .mov
         exporter?.timeRange = timeRange
@@ -145,7 +146,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             }
         })
     }
-    
+
     private var timeObserverToken: Any?
     private var boundaryTimeObserverToken: Any?
     private var playerItemStatusObserver: NSKeyValueObservation?
@@ -205,7 +206,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         rangeSlider.addTarget(self, action: #selector(rangeSliderValueChanged(_:)),
                               for: .valueChanged)
     }
-    
+
     override func viewDidAppear(_ animated: Bool) {
         guard let url = url else { return }
         setupPlaySpeedMenu()
@@ -217,7 +218,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         player.replaceCurrentItem(with: AVPlayerItem(url: url))
         player.playImmediately(atRate: playSpeed)
     }
-    
+
     override func viewWillDisappear(_ animated: Bool) {
         player.pause()
         if let timeObserverToken = timeObserverToken {
@@ -240,13 +241,13 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         let y = (view.bounds.height - height * 3.7)
         rangeSlider.frame = CGRect(x: x, y: y, width: width, height: height)
     }
-    
+
     func playUrl(url: URL) {
         self.url = url
         setupPlaySpeedMenu()
         setupSaveMenu()
         setupRangeMenu()
-        
+
         playerView.player = player
         setupPlayerObservers()
         player.replaceCurrentItem(with: AVPlayerItem(url: url))
@@ -285,21 +286,28 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             self.save(asNew: true)
         })
         options.insert(item, at: 0)
+        item = UIAction(title: "Delete", state: .off, handler: {_ in
+            if let url = self.url {
+                try? FileManager.default.removeItem(at: url)
+            }
+            self.dismiss(animated: true)
+        })
+        options.insert(item, at: 0)
         let menu = UIMenu(title: "Save", children: options)
         
         saveButton.showsMenuAsPrimaryAction = true
         saveButton.menu = menu
     }
-    
+
     func setupRangeMenu() {
         func do_it(_ lowerOffset: Double, _ upperOffset: Double) {
-            var lower = Swift.max(self.rangeSlider.min, self.rangeSlider.thumb - CGFloat(lowerOffset))
-            var upper = Swift.min(self.rangeSlider.thumb + CGFloat(upperOffset), self.rangeSlider.max)
+            let lower = Swift.max(self.rangeSlider.min, self.rangeSlider.thumb - CGFloat(lowerOffset))
+            let upper = Swift.min(self.rangeSlider.thumb + CGFloat(upperOffset), self.rangeSlider.max)
             self.rangeSlider.lowerBound = lower
             self.rangeSlider.upperBound = upper
             self.setupPlayRange(lower, upper)
         }
-        
+
         var options = [UIAction]()
         var item = UIAction(title: "Reset", state: .off, handler: { _ in
             self.rangeSlider.lowerBound = self.rangeSlider.min
@@ -311,7 +319,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             do_it(1.5, 1.5)
         })
         options.insert(item, at: 0)
-        item = UIAction(title: "2.0 : 8.0", state: .off, handler: { _ in
+        item = UIAction(title: "2.0 : 5.0", state: .off, handler: { _ in
             do_it(2.0, 8.0)
         })
         options.insert(item, at: 0)
@@ -324,7 +332,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         rangeButton.showsMenuAsPrimaryAction = true
         rangeButton.menu = menu
     }
-    
+
     func setupPlayerObservers() {
         playerTimeControlStatusObserver = player.observe(\AVPlayer.timeControlStatus, options: [.initial, .new]) { [unowned self] _, _ in
             DispatchQueue.main.async {

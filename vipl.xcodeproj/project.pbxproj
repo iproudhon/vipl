@@ -11,6 +11,7 @@
 		851040D829540F8E00320EC7 /* AVPlayerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851040D729540F8E00320EC7 /* AVPlayerController.swift */; };
 		851040DA2955185C00320EC7 /* CollectionView.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 851040D92955185C00320EC7 /* CollectionView.storyboard */; };
 		851040DC29551E1900320EC7 /* CollectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851040DB29551E1900320EC7 /* CollectionViewController.swift */; };
+		851040DE295637B200320EC7 /* CaptureHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851040DD295637B200320EC7 /* CaptureHelper.swift */; };
 		85169D4D294AA664007C081F /* CaptureView.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 85169D4C294AA664007C081F /* CaptureView.storyboard */; };
 		85169D4F294AA8EB007C081F /* CapturePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85169D4E294AA8EB007C081F /* CapturePreviewView.swift */; };
 		85169D51294AAE71007C081F /* CaptureViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85169D50294AAE71007C081F /* CaptureViewController.swift */; };
@@ -50,6 +51,7 @@
 		851040D729540F8E00320EC7 /* AVPlayerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVPlayerController.swift; sourceTree = "<group>"; };
 		851040D92955185C00320EC7 /* CollectionView.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = CollectionView.storyboard; sourceTree = "<group>"; };
 		851040DB29551E1900320EC7 /* CollectionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionViewController.swift; sourceTree = "<group>"; };
+		851040DD295637B200320EC7 /* CaptureHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureHelper.swift; sourceTree = "<group>"; };
 		85169D4C294AA664007C081F /* CaptureView.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = CaptureView.storyboard; sourceTree = "<group>"; };
 		85169D4E294AA8EB007C081F /* CapturePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturePreviewView.swift; sourceTree = "<group>"; };
 		85169D50294AAE71007C081F /* CaptureViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureViewController.swift; sourceTree = "<group>"; };
@@ -128,6 +130,7 @@
 				85AC1B762947BBB900CA4556 /* PlayerViewController.swift */,
 				85169D4E294AA8EB007C081F /* CapturePreviewView.swift */,
 				85169D50294AAE71007C081F /* CaptureViewController.swift */,
+				851040DD295637B200320EC7 /* CaptureHelper.swift */,
 				851040D729540F8E00320EC7 /* AVPlayerController.swift */,
 				851040D52951B1FE00320EC7 /* RangeSlider.swift */,
 				85AC1B11293EBAEF00CA4556 /* Assets.xcassets */,
@@ -304,6 +307,7 @@
 				851040D829540F8E00320EC7 /* AVPlayerController.swift in Sources */,
 				85169D51294AAE71007C081F /* CaptureViewController.swift in Sources */,
 				851040DC29551E1900320EC7 /* CollectionViewController.swift in Sources */,
+				851040DE295637B200320EC7 /* CaptureHelper.swift in Sources */,
 				85AC1B772947BBB900CA4556 /* PlayerViewController.swift in Sources */,
 				851040D62951B1FE00320EC7 /* RangeSlider.swift in Sources */,
 				85DE2CBB2948496700BBFCA8 /* PlayerView.swift in Sources */,

@@ -4,6 +4,7 @@
     <dependencies>
         <deployment identifier="iOS"/>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="21505"/>
+        <capability name="Image references" minToolsVersion="12.0"/>
         <capability name="Named colors" minToolsVersion="9.0"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
@@ -20,20 +21,11 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <view contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="xLE-CY-cd6" customClass="CapturePreviewView" customModule="vipl" customModuleProvider="target">
-                                <rect key="frame" x="16" y="48" width="378" height="585"/>
+                                <rect key="frame" x="0.0" y="48" width="414" height="745"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <subviews>
-                                    <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="fPN-DX-cAc">
-                                        <rect key="frame" x="352" y="10" width="18" height="16"/>
-                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                        <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
-                                        <state key="normal" backgroundImage="xmark" catalog="system"/>
-                                        <connections>
-                                            <action selector="dismiss:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="L2e-Ge-mQo"/>
-                                        </connections>
-                                    </button>
-                                    <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" showsMenuAsPrimaryAction="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" changesSelectionAsPrimaryAction="YES" translatesAutoresizingMaskIntoConstraints="NO" id="r0v-Wx-bif">
-                                        <rect key="frame" x="0.0" y="8" width="325" height="30"/>
+                                    <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" showsMenuAsPrimaryAction="YES" contentHorizontalAlignment="left" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" changesSelectionAsPrimaryAction="YES" translatesAutoresizingMaskIntoConstraints="NO" id="r0v-Wx-bif">
+                                        <rect key="frame" x="8" y="17" width="317" height="38"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                         <menu key="menu" id="ALy-ZK-g9X">
                                             <children>
@@ -57,21 +49,55 @@
                                         <buttonConfiguration key="configuration" style="plain" title="Resume"/>
                                     </button>
                                     <label hidden="YES" opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="00:00" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Kbf-YX-Knw">
-                                        <rect key="frame" x="163" y="46" width="60" height="21"/>
+                                        <rect key="frame" x="158" y="46" width="98" height="21"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMinX="YES" widthSizable="YES" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                        <fontDescription key="fontDescription" type="system" pointSize="17"/>
-                                        <color key="textColor" systemColor="systemOrangeColor"/>
+                                        <fontDescription key="fontDescription" type="system" pointSize="24"/>
+                                        <color key="textColor" systemColor="systemRedColor"/>
                                         <nil key="highlightedColor"/>
                                     </label>
+                                    <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="fPN-DX-cAc">
+                                        <rect key="frame" x="374" y="2" width="40" height="40"/>
+                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                        <fontDescription key="fontDescription" type="system" pointSize="20"/>
+                                        <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
+                                        <state key="normal">
+                                            <imageReference key="backgroundImage" image="xmark" catalog="system" symbolScale="default" variableValue="0.0"/>
+                                        </state>
+                                        <connections>
+                                            <action selector="dismiss:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="L2e-Ge-mQo"/>
+                                        </connections>
+                                    </button>
+                                </subviews>
+                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                            </view>
+                            <view hidden="YES" contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="ViC-To-S1l">
+                                <rect key="frame" x="305" y="764" width="109" height="104"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <subviews>
+                                    <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="k8p-Na-fUM">
+                                        <rect key="frame" x="0.0" y="0.0" width="109" height="104"/>
+                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                    </imageView>
+                                    <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="hjp-wL-BOL">
+                                        <rect key="frame" x="89" y="2" width="20" height="20"/>
+                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                        <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
+                                        <state key="normal" backgroundImage="xmark" catalog="system"/>
+                                        <connections>
+                                            <action selector="dismissCapturedViewView:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="GST-pz-0VX"/>
+                                        </connections>
+                                    </button>
                                 </subviews>
                                 <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                             </view>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="egK-NP-nUa">
-                                <rect key="frame" x="188" y="714.5" width="39" height="38"/>
+                                <rect key="frame" x="177" y="801.5" width="60" height="60"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                 <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
-                                <state key="normal" backgroundImage="record.circle" catalog="system"/>
+                                <state key="normal">
+                                    <imageReference key="backgroundImage" image="record.circle" catalog="system" variableValue="1"/>
+                                </state>
                                 <connections>
                                     <action selector="record_stop:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="zkN-2D-Wg5"/>
                                 </connections>
@@ -83,6 +109,9 @@
                     <connections>
                         <outlet property="cameraUnavailableLabel" destination="yPD-lp-pOZ" id="XeF-M0-TKC"/>
                         <outlet property="camerasMenu" destination="r0v-Wx-bif" id="F4U-BB-VTE"/>
+                        <outlet property="capturedVideoView" destination="ViC-To-S1l" id="mRT-MS-8OX"/>
+                        <outlet property="capturedVideoViewImg" destination="k8p-Na-fUM" id="jq0-4Z-hPM"/>
+                        <outlet property="dismissCapturedVideoButton" destination="hjp-wL-BOL" id="abb-h3-IKW"/>
                         <outlet property="durationLabel" destination="Kbf-YX-Knw" id="WUw-4c-lAn"/>
                         <outlet property="previewView" destination="xLE-CY-cd6" id="SV7-8o-b6n"/>
                         <outlet property="recordButton" destination="egK-NP-nUa" id="DO2-7z-Igm"/>
@@ -104,8 +133,8 @@
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>
-        <systemColor name="systemOrangeColor">
-            <color red="1" green="0.58431372549019611" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+        <systemColor name="systemRedColor">
+            <color red="1" green="0.23137254901960785" blue="0.18823529411764706" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
     </resources>
 </document>

@@ -13,50 +13,62 @@ import UIKit
 import MobileCoreServices
 
 class CaptureViewController: UIViewController, AVCaptureFileOutputRecordingDelegate {
-    
+
     private var spinner: UIActivityIndicatorView!
-    
+
     var windowOrientation: UIInterfaceOrientation {
         return view.window?.windowScene?.interfaceOrientation ?? .unknown
     }
-    
+
     let locationManager = CLLocationManager()
-    
+
     private enum SessionSetupResult {
         case success
         case notAuthorized
         case configurationFailed
     }
-    
+
     private let session = AVCaptureSession()
     private var isSessionRunning = false
     private var selectedSemanticSegmentationMatteTypes = [AVSemanticSegmentationMatte.MatteType]()
-    
+
     private let sessionQueue = DispatchQueue(label: "session queue")
     private var setupResult: SessionSetupResult = .success
-    
+
     private var chosenCamera: CaptureCameraType?
     @objc dynamic var videoDeviceInput: AVCaptureDeviceInput!
-    
+
     @IBOutlet private weak var previewView: CapturePreviewView!
     @IBOutlet private weak var camerasMenu: UIButton!
+
+    @IBOutlet private weak var capturedVideoView: UIView!
+    @IBOutlet private weak var capturedVideoViewImg: UIImageView!
+    @IBOutlet private weak var dismissCapturedVideoButton: UIButton!
     
-    private let rangeSlider = RangeSlider(frame: .zero)
+    private var capturedMovieUrl: URL?      // .work.mov
+    private var tmpMovieUrl: URL?           // .tmp.mov
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // TODO: initialize UI here
+        if self.chosenCamera == nil {
+            if let name = UserDefaults.standard.string(forKey: "the-camera") {
+                let cameras = CaptureHelper.listCameras()
+                self.chosenCamera = cameras?[name] ?? nil
+            }
+        }
         setupCameraSelectionMenu()
-
-        // initialize the range slider
-        view.addSubview(rangeSlider)
-        rangeSlider.addTarget(self, action: #selector(rangeSliderValueChanged(_:)),
-                              for: .valueChanged)
         
         // TODO: setup the video preview view
         previewView.session = session
         
+        capturedMovieUrl = URL(fileURLWithPath: (NSTemporaryDirectory() as NSString).appendingPathComponent("vipl-work.mov"))
+        tmpMovieUrl = URL(fileURLWithPath: (NSTemporaryDirectory() as NSString).appendingPathComponent("vipl-temp.mov"))
+
+        // register tap for captured video viewer
+        capturedVideoView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(self.tapCapturedVideoView(_:))))
+        refreshCapturedVideoView()
+
         if locationManager.authorizationStatus == .notDetermined {
             locationManager.requestWhenInUseAuthorization()
         }
@@ -137,13 +149,6 @@ class CaptureViewController: UIViewController, AVCaptureFileOutputRecordingDeleg
     }
     
     override func viewDidLayoutSubviews() {
-        let margin: CGFloat = 40
-        let width = view.bounds.width - 2 * margin
-        let height: CGFloat = 30
-
-        let x = (view.bounds.width - width) / 2
-        let y = (view.bounds.height - height * 2)
-        rangeSlider.frame = CGRect(x: x, y: y, width: width, height: height)
     }
     
     override var shouldAutorotate: Bool {
@@ -173,32 +178,13 @@ class CaptureViewController: UIViewController, AVCaptureFileOutputRecordingDeleg
         if setupResult != .success {
             return
         }
+
         session.beginConfiguration()
         session.sessionPreset = .photo
-        
+
         // video input device
         do {
-            /*
-            var defaultVideoDevice: AVCaptureDevice?
-
-            if let dualCameraDevice = AVCaptureDevice.default(.builtInDualCamera, for: .video, position: .back) {
-                defaultVideoDevice = dualCameraDevice
-            } else if let dualWideCameraDevice = AVCaptureDevice.default(.builtInDualWideCamera, for: .video, position: .back) {
-                defaultVideoDevice = dualWideCameraDevice
-            } else if let backCameraDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) {
-                defaultVideoDevice = backCameraDevice
-            } else if let frontCameraDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) {
-                defaultVideoDevice = frontCameraDevice
-            }
-            guard let videoDevice = defaultVideoDevice else {
-                print("Default video device not found")
-                setupResult = .configurationFailed
-                session.commitConfiguration()
-                return
-            }
-            let videoDeviceInput = try AVCaptureDeviceInput(device: videoDevice)
-*/
-            guard let videoDeviceInput = getCamera() else {
+            guard let videoDeviceInput = try? CaptureHelper.getCaptureDeviceInput(cam: self.chosenCamera!) else {
                 print("Default video device not found")
                 setupResult = .configurationFailed
                 session.commitConfiguration()
@@ -273,7 +259,42 @@ class CaptureViewController: UIViewController, AVCaptureFileOutputRecordingDeleg
     @IBAction func dismiss(_ sender: Any) {
         self.dismiss(animated: true)
     }
-    
+
+    @IBAction func x_x(_ sender: Any) {
+        /* switch file here */
+        if !(self.movieFileOutput?.isRecording ?? false) {
+            print("not recording")
+            return
+        }
+
+        let videoPreviewLayerOrientation = self.previewView.videoPreviewLayer.connection?.videoOrientation
+        sessionQueue.async {
+            let movieFileOutput = AVCaptureMovieFileOutput()
+            let movieFileOutputConnection = movieFileOutput.connection(with: .video)
+            movieFileOutputConnection?.videoOrientation = videoPreviewLayerOrientation!
+            if movieFileOutputConnection?.isVideoStabilizationSupported ?? false {
+                movieFileOutputConnection?.preferredVideoStabilizationMode = .auto
+            }
+            let availableVideoCodecTypes = movieFileOutput.availableVideoCodecTypes
+            if availableVideoCodecTypes.contains(.hevc) {
+                movieFileOutput.setOutputSettings([AVVideoCodecKey: AVVideoCodecType.hevc], for: movieFileOutputConnection!)
+            }
+
+            self.session.beginConfiguration()
+            self.session.removeOutput(self.movieFileOutput!)
+            self.session.addOutput(movieFileOutput)
+            self.session.commitConfiguration()
+            self.movieFileOutput = movieFileOutput
+
+            if UIDevice.current.isMultitaskingSupported {
+                self.backgroundRecordingID = UIApplication.shared.beginBackgroundTask(expirationHandler: nil)
+            }
+
+            let xxx = self.getNextFileName()
+            self.movieFileOutput?.startRecording(to: URL(fileURLWithPath: xxx), recordingDelegate: self)
+        }
+    }
+
     private func setupOutput() {
         sessionQueue.async {
             let movieFileOutput = AVCaptureMovieFileOutput()
@@ -548,8 +569,19 @@ class CaptureViewController: UIViewController, AVCaptureFileOutputRecordingDeleg
         let videoPreviewLayerOrientation = previewView.videoPreviewLayer.connection?.videoOrientation
         sessionQueue.async {
             if movieFileOutput.isRecording {
+                DispatchQueue.main.async {
+                    self.recordButton.isEnabled = false
+                    self.recordButton.setBackgroundImage(UIImage(systemName: "record.circle"), for: .normal)
+                    self.recordButton.tintColor = nil
+                }
                 movieFileOutput.stopRecording()
             } else {
+                DispatchQueue.main.async {
+                    self.recordButton.isEnabled = false
+                    self.recordButton.setBackgroundImage(UIImage(systemName: "stop.circle.fill"), for: .normal)
+                    self.recordButton.tintColor = .systemRed
+                }
+
                 if UIDevice.current.isMultitaskingSupported {
                     self.backgroundRecordingID = UIApplication.shared.beginBackgroundTask(expirationHandler: nil)
                 }
@@ -561,15 +593,25 @@ class CaptureViewController: UIViewController, AVCaptureFileOutputRecordingDeleg
                     movieFileOutput.setOutputSettings([AVVideoCodecKey: AVVideoCodecType.hevc], for: movieFileOutputConnection!)
                 }
                 
-                // TODO: record to own directory
-                let fn = self.getNextFileName()
-                movieFileOutput.startRecording(to: URL(fileURLWithPath: fn), recordingDelegate: self)
+                try? FileManager.default.removeItem(at: self.tmpMovieUrl!)
                 
-                /*
-                let outputFileName = NSUUID().uuidString
-                let outputFilePath = (NSTemporaryDirectory() as NSString).appendingPathComponent((outputFileName as NSString).appendingPathExtension("mov")!)
-                movieFileOutput.startRecording(to: URL(fileURLWithPath: outputFilePath), recordingDelegate: self)
-                 */
+                var metadata = [AVMutableMetadataItem]()
+                let creationDateMetaItem = AVMutableMetadataItem()
+                   creationDateMetaItem.keySpace = .common
+                   creationDateMetaItem.key = AVMetadataKey.commonKeyCreationDate as NSString
+                   creationDateMetaItem.value = Date() as NSDate
+                metadata.append(creationDateMetaItem)
+
+                if let location = self.locationManager.location {
+                    let locationMetaItem = AVMutableMetadataItem()
+                    locationMetaItem.keySpace = AVMetadataKeySpace.quickTimeMetadata
+                    locationMetaItem.key = AVMetadataKey.quickTimeMetadataKeyLocationISO6709 as NSString
+                    locationMetaItem.identifier = AVMetadataIdentifier.quickTimeMetadataLocationISO6709
+                    locationMetaItem.value = String(format: "%+09.5f%+010.5f%+.0fCRSWGS_84", location.coordinate.latitude, location.coordinate.longitude, location.altitude) as NSString
+                    metadata.append(locationMetaItem)
+                }
+                movieFileOutput.metadata = metadata
+                movieFileOutput.startRecording(to: self.tmpMovieUrl!, recordingDelegate: self)
             }
         }
     }
@@ -578,6 +620,7 @@ class CaptureViewController: UIViewController, AVCaptureFileOutputRecordingDeleg
         DispatchQueue.main.async {
             self.recordButton.isEnabled = true
             self.recordButton.setBackgroundImage(UIImage(systemName: "stop.circle.fill"), for: .normal)
+            self.recordButton.tintColor = .systemRed
             self.durationLabel.isHidden = false
             self.durationLabel.text = "00:00"
             
@@ -600,7 +643,6 @@ class CaptureViewController: UIViewController, AVCaptureFileOutputRecordingDeleg
     }
     
     func fileOutput2Photo(_ output: AVCaptureFileOutput, didFinishRecordingTo outputFileURL: URL, from connections: [AVCaptureConnection], error: Error?) {
-        
         func cleanup() {
             let path = outputFileURL.pathExtension
             if FileManager.default.fileExists(atPath: path) {
@@ -658,18 +700,38 @@ class CaptureViewController: UIViewController, AVCaptureFileOutputRecordingDeleg
 
         var success = true
         if error != nil {
-            print("Movie file finishing error: \(String(describing: error))")
-            success = (((error! as NSError).userInfo[AVErrorRecordingSuccessfullyFinishedKey] as AnyObject).boolValue)!
+            success = (((error! as NSError).userInfo[AVErrorRecordingSuccessfullyFinishedKey] as AnyObject).boolValue) ?? false
+            if !success {
+                print("Movie file finishing error: \(String(describing: error))")
+            }
         }
+
+        // merge & move tmp file to work file
+        let url = URL(fileURLWithPath: getNextFileName())
+        try? FileManager.default.moveItem(at: self.tmpMovieUrl!, to: url)
+        self.capturedMovieUrl = url
+
+        /*
+        if true {
+            try? FileManager.default.removeItem(at: self.capturedMovieUrl!)
+            try? FileManager.default.moveItem(at: self.tmpMovieUrl!, to: self.capturedMovieUrl!)
+        } else {
+            if !CaptureHelper.appendMovie(to: self.capturedMovieUrl!, it: self.tmpMovieUrl!) {
+                try? FileManager.default.removeItem(at: self.capturedMovieUrl!)
+                try? FileManager.default.moveItem(at: self.tmpMovieUrl!, to: self.capturedMovieUrl!)
+            }
+        }*/
 
         DispatchQueue.main.async {
             self.recordButton.isEnabled = true
             self.recordButton.setBackgroundImage(UIImage(systemName: "record.circle"), for: .normal)
+            self.recordButton.tintColor = nil
             self.durationLabel.isHidden = true
             self.durationLabel.text = "00:00"
+            self.refreshCapturedVideoView()
         }
     }
-    
+
     // MARK: KeyValueObservattions & Notifications
     private var keyValueObservations = [NSKeyValueObservation]()
     
@@ -796,81 +858,32 @@ class CaptureViewController: UIViewController, AVCaptureFileOutputRecordingDeleg
 }
 
 extension CaptureViewController {
-    class CaptureCameraType {
-        var name: String
-        var deviceType: AVCaptureDevice.DeviceType
-        var position: AVCaptureDevice.Position
-        var format: AVCaptureDevice.Format
-        var frameRate: Float64
-        var dimensions: CMVideoDimensions
-        
-        init(name: String, deviceType: AVCaptureDevice.DeviceType, position: AVCaptureDevice.Position, format: AVCaptureDevice.Format, frameRate: Float64, dimensions: CMVideoDimensions) {
-            self.name = name
-            self.deviceType = deviceType
-            self.position = position
-            self.format = format
-            self.frameRate = frameRate
-            self.dimensions = dimensions
-        }
-    }
-    
-    func listCameras() -> [String:CaptureCameraType]? {
-        var session: AVCaptureDevice.DiscoverySession?
-        if #available(iOS 15.4, *) {
-            session = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera, .builtInUltraWideCamera, .builtInTelephotoCamera, .builtInDualCamera, .builtInDualWideCamera, .builtInTripleCamera, .builtInTrueDepthCamera, .builtInLiDARDepthCamera], mediaType: .video, position: .unspecified)
-        } else {
-            session = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera, .builtInUltraWideCamera, .builtInTelephotoCamera, .builtInDualCamera, .builtInDualWideCamera, .builtInTripleCamera, .builtInTrueDepthCamera], mediaType: .video, position: .unspecified)
-        }
-        
-        var choices: [String:CaptureCameraType] = [:]
-        guard let session = session else { return nil }
-        for device in session.devices {
-            // frameRate -> format
-            var rate2format: [Float64:AVCaptureDevice.Format] = [:]
-            for format in device.formats {
-                let dims = format.formatDescription.dimensions
-                for range in format.videoSupportedFrameRateRanges {
-                    if let ofmt = rate2format[range.maxFrameRate] {
-                        let odims = ofmt.formatDescription.dimensions
-                        if dims.height > odims.height || dims.width > odims.width {
-                            rate2format.updateValue(format, forKey: range.maxFrameRate)
-                        }
-                    } else {
-                        rate2format[range.maxFrameRate] = format
-                    }
-                }
-            }
-            
-            for key in rate2format.keys.sorted() {
-                guard let format = rate2format[key] as AVCaptureDevice.Format? else { continue }
-                let dims = format.formatDescription.dimensions
-                let name = "\(device.localizedName) \(dims.width)x\(dims.height) \(key) fps"
-                choices[name] = CaptureCameraType(name: name, deviceType: device.deviceType, position: device.position, format: format, frameRate: key, dimensions: dims)
-            }
-        }
-        return choices
-    }
-    
     func setupCameraSelectionMenu() {
         let doit = {(action:UIAction) in
-            if let cameras = self.listCameras(), let camera = cameras[action.title] {
+            if let cameras = CaptureHelper.listCameras(), let camera = cameras[action.title] {
                 self.chosenCamera = camera
+                UserDefaults.standard.set(camera.name, forKey: "the-camera")
             }
             self.selectCamera()
         }
         
         var options = [UIAction]()
-        if let choices = listCameras() {
+        if let choices = CaptureHelper.listCameras() {
             for name in choices.keys.sorted() {
                 let item = UIAction(title: name, state: .off, handler: doit)
                 options.append(item)
+                if self.chosenCamera?.name == name {
+                    item.state = .on
+                }
             }
             if options.count == 0 {
                 let item = UIAction(title: "no camera", state: .off, handler: {_ in })
                 options.append(item)
             }
-            options[0].state = .on
-            chosenCamera = choices[options[0].title]
+            if self.chosenCamera == nil {
+                options[0].state = .on
+                self.chosenCamera = choices[options[0].title]
+            }
             let menu = UIMenu(title: "Cameras", options: .displayInline, children: options)
             camerasMenu.menu = menu
             if #available(iOS 15.0, *) {
@@ -882,27 +895,17 @@ extension CaptureViewController {
         }
     }
     
-    func getCamera() -> AVCaptureDeviceInput? {
-        guard let chosenCamera = self.chosenCamera else { return nil }
-        guard let device = AVCaptureDevice.default(chosenCamera.deviceType, for: .video, position: chosenCamera.position) else { return nil }
-        do {
-            try device.lockForConfiguration()
-            device.activeFormat = chosenCamera.format
-            device.activeVideoMinFrameDuration = CMTimeMake(value: 1, timescale: Int32(chosenCamera.frameRate))
-            device.activeVideoMaxFrameDuration = CMTimeMake(value: 1, timescale: Int32(chosenCamera.frameRate))
-            device.unlockForConfiguration()
-            let videoDeviceInput = try AVCaptureDeviceInput(device: device)
-            return videoDeviceInput
-        } catch {
-            print("Can't create video device input: \(error)")
-            return nil
-        }
-    }
-    
     private func selectCamera() {
         self.selectedMovieMode10BitDeviceFormat = nil
         sessionQueue.async {
-            guard let videoDeviceInput = self.getCamera() else { return }
+            guard let chosenCamera = self.chosenCamera else { return }
+            let videoDeviceInput: AVCaptureDeviceInput!
+            do {
+                videoDeviceInput = try CaptureHelper.getCaptureDeviceInput(cam: chosenCamera)
+            } catch {
+                print("Cannot find camera: \(error.localizedDescription)")
+                return
+            }
             let currentVideoDevice = self.videoDeviceInput.device
             self.session.beginConfiguration()
             self.session.removeInput(self.videoDeviceInput)
@@ -930,8 +933,45 @@ extension CaptureViewController {
 }
 
 extension CaptureViewController {
-    @objc func rangeSliderValueChanged(_ rangeSlider: RangeSlider) {
-        let values = "(\(rangeSlider.lowerBound) \(rangeSlider.thumb) \(rangeSlider.upperBound))"
+    @IBAction func dismissCapturedViewView(_ sender: Any) {
+        guard let url = self.capturedMovieUrl else { return }
+        if FileManager.default.fileExists(atPath: url.path) {
+            try? FileManager.default.removeItem(at: url)
+        }
+        self.refreshCapturedVideoView()
+    }
+
+    @objc func tapCapturedVideoView(_ sender: UITapGestureRecognizer) {
+        guard let controller = UIStoryboard(name: "PlayerView", bundle: nil).instantiateInitialViewController() as? PlayerViewController else { return }
+        controller.loadViewIfNeeded()
+        controller.modalPresentationStyle = .fullScreen
+        controller.url = self.capturedMovieUrl
+        present(controller, animated: true)
+    }
+
+    func refreshCapturedVideoView() {
+        guard let url = self.capturedMovieUrl else { return }
+        if !FileManager.default.fileExists(atPath: url.path) {
+            self.capturedVideoView.isHidden = true
+            return
+        }
+
+        let (thumbnail, _) = CollectionViewController.getThumbnail(url: url)
+        guard let thumbnail = thumbnail else { return }
+        self.capturedVideoViewImg.frame.size = self.capturedVideoView.frame.size
+        self.capturedVideoViewImg.frame.origin = CGPoint(x: 0, y: 0)
+        self.capturedVideoViewImg.image = thumbnail
+
+        let width = CGFloat(100)
+        var height = thumbnail.size.height * width / thumbnail.size.width
+        let x = self.view.frame.size.width - width
+        let y = self.view.frame.size.height - height
+        self.capturedVideoView.frame.size = CGSizeMake(width, height)
+        self.capturedVideoView.frame.origin = CGPoint(x: x, y: y)
+        self.capturedVideoViewImg.frame.size = self.capturedVideoView.frame.size
+        self.capturedVideoViewImg.frame.origin = CGPoint(x: 0, y: 0)
+        self.dismissCapturedVideoButton.frame.origin = CGPoint(x: self.capturedVideoView.frame.width - self.dismissCapturedVideoButton.frame.width, y: 0)
+        self.capturedVideoView.isHidden = false
     }
 }
 
