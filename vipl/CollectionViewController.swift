@@ -34,12 +34,14 @@ class SwingItem {
     var url: URL?
     var creationDate: Date?
     var meta: String?
+    var dimensions: CGSize?
     var thumbnail: UIImage?
     
-    init(url: URL?, creationDate: Date?, meta: String?, thumbnail: UIImage?) {
+    init(url: URL?, creationDate: Date?, meta: String?, dimensions: CGSize?, thumbnail: UIImage?) {
         self.url = url
         self.creationDate = creationDate
         self.meta = meta
+        self.dimensions = dimensions
         self.thumbnail = thumbnail
     }
 }
@@ -108,8 +110,8 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
         let interspace = Double(numberOfCellsPerRow - 1) * Double(flowLayout.minimumInteritemSpacing)
         let width = CGFloat(Int(totalwidth - interspace) / numberOfCellsPerRow)
         var height = width
-        if let img = swingItems?[indexPath[1]].thumbnail {
-            height = img.size.height * width / img.size.width
+        if let dims = swingItems?[indexPath[1]].dimensions {
+            height = dims.height * width / dims.width
         }
         return CGSizeMake(width, height)
     }
@@ -145,9 +147,8 @@ extension CollectionViewController {
                 let ext = url.pathExtension
                 let uti = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, ext as CFString, nil)
                 if UTTypeConformsTo((uti?.takeRetainedValue())!, kUTTypeMovie) {
-                    let attr = try FileManager.default.attributesOfItem(atPath: url.path)
-                    let (thumbnail, creationDate) = CollectionViewController.getThumbnail(url: url)
-                    let swingItem = SwingItem(url: url, creationDate: creationDate, meta: "", thumbnail: thumbnail)
+                    let (creationDate, dimensions) = CollectionViewController.getCreationDateAndDimensions(url: url)
+                    let swingItem = SwingItem(url: url, creationDate: creationDate, meta: "", dimensions: dimensions, thumbnail: nil)
                     swingItems.append(swingItem)
                 }
             }
@@ -161,19 +162,31 @@ extension CollectionViewController {
         }
     }
     
-    static func getThumbnail(url: URL) -> (UIImage?, Date?) {
+    static func getThumbnail(url: URL) -> UIImage? {
         let asset = AVAsset(url: url)
-        let date = asset.creationDate?.value as? Date
         let assetImgGenerate = AVAssetImageGenerator(asset: asset)
         assetImgGenerate.appliesPreferredTrackTransform = true
         let pointOfTime = CMTimeMakeWithSeconds(0.1, preferredTimescale: 600)
         do {
             let img = try assetImgGenerate.copyCGImage(at: pointOfTime, actualTime: nil)
-            return (UIImage(cgImage: img), date)
+            return UIImage(cgImage: img)
         } catch {
             print("\(error.localizedDescription)")
-            return (nil, nil)
+            return nil
         }
+    }
+
+    static func getCreationDateAndDimensions(url: URL) -> (Date?, CGSize?) {
+        let asset = AVAsset(url: url)
+        let date = asset.creationDate?.value as? Date
+        let track = asset.tracks(withMediaType: .video).first
+        var size = CGSize(width: 1, height: 1)
+        if let track = track {
+            size = CGSizeApplyAffineTransform(track.naturalSize, track.preferredTransform)
+        }
+        size.width = abs(size.width)
+        size.height = abs(size.height)
+        return (date, size)
     }
 }
 
@@ -278,8 +291,17 @@ extension CollectionViewController {
         cell.label.isHidden = true
         cell.img.frame.size = cell.frame.size
         cell.img.frame.origin = CGPoint(x: 0, y: 0)
-        cell.img.image = swingItems?[ix].thumbnail
         cell.swingItem = swingItems?[ix]
+        DispatchQueue.main.async {
+            if let swingItem = cell.swingItem, let url = swingItem.url {
+                if swingItem.thumbnail == nil {
+                    swingItem.thumbnail = CollectionViewController.getThumbnail(url: url)
+                }
+                if let thumbnail = swingItem.thumbnail {
+                    cell.img.image = thumbnail
+                }
+            }
+        }
         
         if !cell.tapRegistered {
             cell.addGestureRecognizer(UITapGestureRecognizer(target: cell, action: #selector(cell.tap(_:))))

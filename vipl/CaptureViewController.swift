@@ -956,7 +956,7 @@ extension CaptureViewController {
             return
         }
 
-        let (thumbnail, _) = CollectionViewController.getThumbnail(url: url)
+        let thumbnail = CollectionViewController.getThumbnail(url: url)
         guard let thumbnail = thumbnail else { return }
         self.capturedVideoViewImg.frame.size = self.capturedVideoView.frame.size
         self.capturedVideoViewImg.frame.origin = CGPoint(x: 0, y: 0)
