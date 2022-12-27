@@ -232,6 +232,8 @@ class CaptureViewController: UIViewController, AVCaptureFileOutputRecordingDeleg
 
         session.commitConfiguration()
         setupOutput()
+
+        self.selectCamera()
     }
     
     @IBAction private func resumeInterruptedSession(_ resumeButton: UIButton) {
