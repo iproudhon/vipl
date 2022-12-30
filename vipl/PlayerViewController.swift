@@ -33,6 +33,8 @@ Audio Repeat < Play > <> Save
 class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, UIDocumentPickerDelegate, UINavigationControllerDelegate {
     
     let player = AVPlayer()
+    let playerItemVideoOutput = AVPlayerItemVideoOutput(pixelBufferAttributes: [String(kCVPixelBufferPixelFormatTypeKey): kCVPixelFormatType_32BGRA])
+    lazy var displayLink: CADisplayLink = CADisplayLink(target: self, selector: #selector(displayLinkFired(link:)))
 
     @IBOutlet var playerView: PlayerView!
     @IBOutlet weak var timeLabel: UILabel!
@@ -44,8 +46,13 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     @IBOutlet weak var rangeButton: UIButton!
     @IBOutlet weak var saveButton: UIButton!
     @IBOutlet weak var dismissButton: UIButton!
+    @IBOutlet weak var overlayView: OverlayView!
     
     private let rangeSlider = RangeSlider(frame: .zero)
+
+    // for seek
+    private var seekInProgress = false
+    private var seekChaseTime = CMTime.zero
     
     @IBAction func dismiss(_ sender: Any) {
         self.dismiss(animated: true)
@@ -158,6 +165,8 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     private var isRepeat = false
     private var playSpeed = Float(1.0)
 
+    private var poser = Poser()
+
     var url: URL?
     
     func loadAndPlayVideo(_ sender: Any) {
@@ -205,6 +214,8 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         view.addSubview(rangeSlider)
         rangeSlider.addTarget(self, action: #selector(rangeSliderValueChanged(_:)),
                               for: .valueChanged)
+
+        poser.updateModel()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -320,7 +331,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         })
         options.insert(item, at: 0)
         item = UIAction(title: "2.0 : 5.0", state: .off, handler: { _ in
-            do_it(2.0, 8.0)
+            do_it(2.0, 5.0)
         })
         options.insert(item, at: 0)
         item = UIAction(title: "0.3 : 0.2", state: .off, handler: { _ in
@@ -393,7 +404,13 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             }
         }
         
-        playerItemStatusObserver = player.observe(\AVPlayer.currentItem?.status, options: [.new, .initial]) { [unowned self] player, _ in
+        playerItemStatusObserver = player.observe(\AVPlayer.currentItem?.status, options: [.new, .initial, .old]) { [unowned self] player, _ in
+            if let item = player.currentItem {
+                if item.status == .readyToPlay {
+                    item.add(self.playerItemVideoOutput)
+                    self.displayLink.add(to: .main, forMode: .common)
+                }
+            }
             DispatchQueue.main.async {
                 self.updateUIForPlayerItemStatus()
             }
@@ -505,22 +522,54 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
 }
 
 extension PlayerViewController {
+    private func smoothSeekInner(completionHandler: @escaping (Bool) -> Void) {
+        self.seekInProgress = true
+        let to = self.seekChaseTime
+        player.seek(to: to, toleranceBefore: CMTime.zero, toleranceAfter: CMTime.zero) { [weak self] success in
+            guard let `self` = self else {
+                self?.seekInProgress = false
+                return
+            }
+            if CMTimeCompare(to, self.seekChaseTime) == 0 {
+                self.seekInProgress = false
+                completionHandler(success)
+            } else {
+                self.smoothSeekInner(completionHandler: completionHandler)
+            }
+        }
+    }
+
+    private func smoothSeek(to: CMTime, completionHandler: @escaping (Bool) -> Void) {
+        guard player.currentItem?.status == .readyToPlay else {
+            self.seekInProgress = false
+            return
+        }
+        if CMTimeCompare(to, seekChaseTime) == 0 {
+            return
+        }
+        self.seekChaseTime = to
+        if self.seekInProgress {
+            return
+        }
+        smoothSeekInner(completionHandler: completionHandler)
+    }
+
     @objc func rangeSliderValueChanged(_ rangeSlider: RangeSlider) {
         var t: CMTime!
         switch rangeSlider.active {
         case .thumb:
             t = CMTime(seconds: Double(rangeSlider.thumb), preferredTimescale: 600)
-            player.seek(to: t, toleranceBefore: .zero, toleranceAfter: .zero)
+            self.smoothSeek(to: t, completionHandler: { _ in })
         case .lowerBound:
             t = CMTime(seconds: Double(rangeSlider.lowerBound), preferredTimescale: 600)
-            player.seek(to: t, toleranceBefore: .zero, toleranceAfter: .zero) { success in
+            self.smoothSeek(to: t) { success in
                 if let currentItem = self.player.currentItem {
                     rangeSlider.lowerBound = CGFloat(currentItem.currentTime().seconds)
                 }
             }
         case .upperBound:
             t = CMTime(seconds: Double(rangeSlider.upperBound), preferredTimescale: 600)
-            player.seek(to: t, toleranceBefore: .zero, toleranceAfter: .zero) { success in
+            self.smoothSeek(to: t) { success in
                 if let currentItem = self.player.currentItem {
                     rangeSlider.upperBound = CGFloat(currentItem.currentTime().seconds)
                 }
@@ -546,6 +595,19 @@ extension PlayerViewController {
                     currentItem.seek(to: startTime, completionHandler: nil)
                     self!.player.playImmediately(atRate: self!.playSpeed)
                 }
+            }
+        }
+    }
+}
+
+extension PlayerViewController {
+    @objc func displayLinkFired(link: CADisplayLink) {
+        let currentTime = playerItemVideoOutput.itemTime(forHostTime: CACurrentMediaTime())
+        if playerItemVideoOutput.hasNewPixelBuffer(forItemTime: currentTime) {
+            if let buffer = playerItemVideoOutput.copyPixelBuffer(forItemTime: currentTime, itemTimeForDisplay: nil) {
+                // let frameImage = CIImage(cvImageBuffer: buffer)
+                let transform = CGAffineTransform(rotationAngle: .pi/2)
+                poser.runModel(targetView: overlayView, pixelBuffer: buffer, transform: transform)
             }
         }
     }
