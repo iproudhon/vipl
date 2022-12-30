@@ -23,6 +23,7 @@ limitations under the License.
 #include "builtin_ops.h"
 #include "c_api.h"
 #include "common.h"
+#include "profiler.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -402,6 +403,15 @@ TFL_CAPI_EXPORT extern TfLiteStatus TfLiteSignatureRunnerCancel(
 /// WARNING: This is an experimental API and subject to change.
 TFL_CAPI_EXPORT extern void TfLiteSignatureRunnerDelete(
     TfLiteSignatureRunner* signature_runner);
+
+/// Sets the telemetry profiler to the interpreter.
+/// The interpreter takes the ownership of profiler, but the caller needs to
+/// own the underlying profiler->data and ensure it outlives the interpreter.
+///
+/// WARNING: This is an experimental API and subject to change.
+TFL_CAPI_EXPORT extern void TfLiteInterpreterSetTelemetryProfiler(
+    const TfLiteInterpreter* interpreter,
+    TfLiteTelemetryProfilerStruct* profiler);
 
 #ifdef __cplusplus
 }  // extern "C"

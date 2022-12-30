@@ -1,0 +1,6 @@
+framework module Pods_vipl {
+  umbrella header "Pods-vipl-umbrella.h"
+
+  export *
+  module * { export * }
+}
