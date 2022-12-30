@@ -14,7 +14,7 @@
 		851040DC29551E1900320EC7 /* CollectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851040DB29551E1900320EC7 /* CollectionViewController.swift */; };
 		851040DE295637B200320EC7 /* CaptureHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851040DD295637B200320EC7 /* CaptureHelper.swift */; };
 		851040E5295C1AD900320EC7 /* OverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851040E4295C1AD900320EC7 /* OverlayView.swift */; };
-		851040EB295C1B2800320EC7 /* PoseNet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851040E6295C1B2800320EC7 /* PoseNet.swift */; };
+		851040EB295C1B2800320EC7 /* PoseNetTF.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851040E6295C1B2800320EC7 /* PoseNetTF.swift */; };
 		851040EC295C1B2800320EC7 /* PoseData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851040E7295C1B2800320EC7 /* PoseData.swift */; };
 		851040ED295C1B2800320EC7 /* MoveNet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851040E8295C1B2800320EC7 /* MoveNet.swift */; };
 		851040EE295C1B2800320EC7 /* PoseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851040E9295C1B2800320EC7 /* PoseConfig.swift */; };
@@ -39,6 +39,19 @@
 		85AC1B2A293EBAEF00CA4556 /* viplUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AC1B29293EBAEF00CA4556 /* viplUITests.swift */; };
 		85AC1B2C293EBAEF00CA4556 /* viplUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AC1B2B293EBAEF00CA4556 /* viplUITestsLaunchTests.swift */; };
 		85AC1B772947BBB900CA4556 /* PlayerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AC1B762947BBB900CA4556 /* PlayerViewController.swift */; };
+		85C8C646295F76F300012236 /* PoseBuilder+Multiple.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C63B295F76F300012236 /* PoseBuilder+Multiple.swift */; };
+		85C8C647295F76F300012236 /* PoseBuilderConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C63C295F76F300012236 /* PoseBuilderConfiguration.swift */; };
+		85C8C648295F76F300012236 /* Pose.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C63D295F76F300012236 /* Pose.swift */; };
+		85C8C649295F76F300012236 /* PoseBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C63E295F76F300012236 /* PoseBuilder.swift */; };
+		85C8C64A295F76F300012236 /* CGPoint+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C63F295F76F300012236 /* CGPoint+Extension.swift */; };
+		85C8C64B295F76F300012236 /* CGImage+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C640295F76F300012236 /* CGImage+Extension.swift */; };
+		85C8C64C295F76F300012236 /* PoseBuilder+Single.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C641295F76F300012236 /* PoseBuilder+Single.swift */; };
+		85C8C64D295F76F300012236 /* PoseNet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C642295F76F300012236 /* PoseNet.swift */; };
+		85C8C64E295F76F300012236 /* PoseNetInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C643295F76F300012236 /* PoseNetInput.swift */; };
+		85C8C64F295F76F300012236 /* PoseNetOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C644295F76F300012236 /* PoseNetOutput.swift */; };
+		85C8C650295F76F300012236 /* Joint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C645295F76F300012236 /* Joint.swift */; };
+		85C8C652295F77BE00012236 /* PoseNetMobileNet100S16FP16.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C651295F77BE00012236 /* PoseNetMobileNet100S16FP16.mlmodel */; };
+		85C8C654295F906400012236 /* PoseNetMobileNet075S16FP16.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C653295F906400012236 /* PoseNetMobileNet075S16FP16.mlmodel */; };
 		85DE2CB52947BF8300BBFCA8 /* PlayerView.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 85DE2CB42947BF8300BBFCA8 /* PlayerView.storyboard */; };
 		85DE2CBB2948496700BBFCA8 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85DE2CBA2948496700BBFCA8 /* PlayerView.swift */; };
 /* End PBXBuildFile section */
@@ -83,7 +96,7 @@
 		851040E2295C15FE00320EC7 /* posenet.tflite */ = {isa = PBXFileReference; lastKnownFileType = file; path = posenet.tflite; sourceTree = "<group>"; };
 		851040E3295C15FE00320EC7 /* movenet_lightning.tflite */ = {isa = PBXFileReference; lastKnownFileType = file; path = movenet_lightning.tflite; sourceTree = "<group>"; };
 		851040E4295C1AD900320EC7 /* OverlayView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OverlayView.swift; sourceTree = "<group>"; };
-		851040E6295C1B2800320EC7 /* PoseNet.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PoseNet.swift; sourceTree = "<group>"; };
+		851040E6295C1B2800320EC7 /* PoseNetTF.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PoseNetTF.swift; sourceTree = "<group>"; };
 		851040E7295C1B2800320EC7 /* PoseData.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PoseData.swift; sourceTree = "<group>"; };
 		851040E8295C1B2800320EC7 /* MoveNet.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MoveNet.swift; sourceTree = "<group>"; };
 		851040E9295C1B2800320EC7 /* PoseConfig.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PoseConfig.swift; sourceTree = "<group>"; };
@@ -109,6 +122,19 @@
 		85AC1B29293EBAEF00CA4556 /* viplUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = viplUITests.swift; sourceTree = "<group>"; };
 		85AC1B2B293EBAEF00CA4556 /* viplUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = viplUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		85AC1B762947BBB900CA4556 /* PlayerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerViewController.swift; sourceTree = "<group>"; };
+		85C8C63B295F76F300012236 /* PoseBuilder+Multiple.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "PoseBuilder+Multiple.swift"; sourceTree = "<group>"; };
+		85C8C63C295F76F300012236 /* PoseBuilderConfiguration.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PoseBuilderConfiguration.swift; sourceTree = "<group>"; };
+		85C8C63D295F76F300012236 /* Pose.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Pose.swift; sourceTree = "<group>"; };
+		85C8C63E295F76F300012236 /* PoseBuilder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PoseBuilder.swift; sourceTree = "<group>"; };
+		85C8C63F295F76F300012236 /* CGPoint+Extension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "CGPoint+Extension.swift"; sourceTree = "<group>"; };
+		85C8C640295F76F300012236 /* CGImage+Extension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "CGImage+Extension.swift"; sourceTree = "<group>"; };
+		85C8C641295F76F300012236 /* PoseBuilder+Single.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "PoseBuilder+Single.swift"; sourceTree = "<group>"; };
+		85C8C642295F76F300012236 /* PoseNet.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PoseNet.swift; sourceTree = "<group>"; };
+		85C8C643295F76F300012236 /* PoseNetInput.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PoseNetInput.swift; sourceTree = "<group>"; };
+		85C8C644295F76F300012236 /* PoseNetOutput.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PoseNetOutput.swift; sourceTree = "<group>"; };
+		85C8C645295F76F300012236 /* Joint.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Joint.swift; sourceTree = "<group>"; };
+		85C8C651295F77BE00012236 /* PoseNetMobileNet100S16FP16.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = PoseNetMobileNet100S16FP16.mlmodel; sourceTree = "<group>"; };
+		85C8C653295F906400012236 /* PoseNetMobileNet075S16FP16.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = PoseNetMobileNet075S16FP16.mlmodel; sourceTree = "<group>"; };
 		85DE2CB42947BF8300BBFCA8 /* PlayerView.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = PlayerView.storyboard; sourceTree = "<group>"; };
 		85DE2CBA2948496700BBFCA8 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
 		B3E4F6BF0B19270CB2690F38 /* Pods-vipl.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-vipl.debug.xcconfig"; path = "Target Support Files/Pods-vipl/Pods-vipl.debug.xcconfig"; sourceTree = "<group>"; };
@@ -162,7 +188,7 @@
 				851040E9295C1B2800320EC7 /* PoseConfig.swift */,
 				851040E7295C1B2800320EC7 /* PoseData.swift */,
 				851040EA295C1B2800320EC7 /* PoseEstimator.swift */,
-				851040E6295C1B2800320EC7 /* PoseNet.swift */,
+				851040E6295C1B2800320EC7 /* PoseNetTF.swift */,
 				851040E3295C15FE00320EC7 /* movenet_lightning.tflite */,
 				851040E1295C15FE00320EC7 /* movenet_thunder.tflite */,
 				851040E2295C15FE00320EC7 /* posenet.tflite */,
@@ -181,6 +207,19 @@
 		85104100295F5F3A00320EC7 /* PoseNet */ = {
 			isa = PBXGroup;
 			children = (
+				85C8C653295F906400012236 /* PoseNetMobileNet075S16FP16.mlmodel */,
+				85C8C651295F77BE00012236 /* PoseNetMobileNet100S16FP16.mlmodel */,
+				85C8C640295F76F300012236 /* CGImage+Extension.swift */,
+				85C8C63F295F76F300012236 /* CGPoint+Extension.swift */,
+				85C8C645295F76F300012236 /* Joint.swift */,
+				85C8C63D295F76F300012236 /* Pose.swift */,
+				85C8C63E295F76F300012236 /* PoseBuilder.swift */,
+				85C8C63B295F76F300012236 /* PoseBuilder+Multiple.swift */,
+				85C8C641295F76F300012236 /* PoseBuilder+Single.swift */,
+				85C8C63C295F76F300012236 /* PoseBuilderConfiguration.swift */,
+				85C8C642295F76F300012236 /* PoseNet.swift */,
+				85C8C643295F76F300012236 /* PoseNetInput.swift */,
+				85C8C644295F76F300012236 /* PoseNetOutput.swift */,
 			);
 			path = PoseNet;
 			sourceTree = "<group>";
@@ -432,25 +471,38 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				85C8C646295F76F300012236 /* PoseBuilder+Multiple.swift in Sources */,
 				85169D4F294AA8EB007C081F /* CapturePreviewView.swift in Sources */,
+				85C8C649295F76F300012236 /* PoseBuilder.swift in Sources */,
 				85AC1B0D293EBAEE00CA4556 /* ViewController.swift in Sources */,
 				851040D829540F8E00320EC7 /* AVPlayerController.swift in Sources */,
+				85C8C64B295F76F300012236 /* CGImage+Extension.swift in Sources */,
 				85169D51294AAE71007C081F /* CaptureViewController.swift in Sources */,
 				851040DC29551E1900320EC7 /* CollectionViewController.swift in Sources */,
 				851040F5295C1B4200320EC7 /* CVPixelBuffer+TFLite.swift in Sources */,
 				851040ED295C1B2800320EC7 /* MoveNet.swift in Sources */,
+				85C8C654295F906400012236 /* PoseNetMobileNet075S16FP16.mlmodel in Sources */,
+				85C8C650295F76F300012236 /* Joint.swift in Sources */,
+				85C8C64C295F76F300012236 /* PoseBuilder+Single.swift in Sources */,
 				851040DE295637B200320EC7 /* CaptureHelper.swift in Sources */,
 				85AC1B772947BBB900CA4556 /* PlayerViewController.swift in Sources */,
 				851040F3295C1B4200320EC7 /* CGSize+TFLite.swift in Sources */,
 				851040EE295C1B2800320EC7 /* PoseConfig.swift in Sources */,
+				85C8C648295F76F300012236 /* Pose.swift in Sources */,
 				851040EF295C1B2800320EC7 /* PoseEstimator.swift in Sources */,
 				851040D62951B1FE00320EC7 /* RangeSlider.swift in Sources */,
 				851040EC295C1B2800320EC7 /* PoseData.swift in Sources */,
 				85DE2CBB2948496700BBFCA8 /* PlayerView.swift in Sources */,
-				851040EB295C1B2800320EC7 /* PoseNet.swift in Sources */,
+				851040EB295C1B2800320EC7 /* PoseNetTF.swift in Sources */,
+				85C8C64D295F76F300012236 /* PoseNet.swift in Sources */,
 				851040E5295C1AD900320EC7 /* OverlayView.swift in Sources */,
 				85AC1B09293EBAEE00CA4556 /* AppDelegate.swift in Sources */,
+				85C8C652295F77BE00012236 /* PoseNetMobileNet100S16FP16.mlmodel in Sources */,
+				85C8C64F295F76F300012236 /* PoseNetOutput.swift in Sources */,
 				851040FC295D8E0E00320EC7 /* Poser.swift in Sources */,
+				85C8C64A295F76F300012236 /* CGPoint+Extension.swift in Sources */,
+				85C8C647295F76F300012236 /* PoseBuilderConfiguration.swift in Sources */,
+				85C8C64E295F76F300012236 /* PoseNetInput.swift in Sources */,
 				851040F4295C1B4200320EC7 /* Data+TFLite.swift in Sources */,
 				85AC1B0B293EBAEE00CA4556 /* SceneDelegate.swift in Sources */,
 			);

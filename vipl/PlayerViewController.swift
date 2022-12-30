@@ -165,7 +165,8 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     private var isRepeat = false
     private var playSpeed = Float(1.0)
 
-    private var poser = Poser()
+    private var poser1 = Poser()
+    private var poser2: PoseNet!
 
     var url: URL?
     
@@ -215,7 +216,12 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         rangeSlider.addTarget(self, action: #selector(rangeSliderValueChanged(_:)),
                               for: .valueChanged)
 
-        poser.updateModel()
+        poser1.updateModel()
+        do {
+            poser2 = try PoseNet()
+        } catch {
+            fatalError("Failed to load posenet model. \(error.localizedDescription)")
+        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -606,8 +612,17 @@ extension PlayerViewController {
         if playerItemVideoOutput.hasNewPixelBuffer(forItemTime: currentTime) {
             if let buffer = playerItemVideoOutput.copyPixelBuffer(forItemTime: currentTime, itemTimeForDisplay: nil) {
                 // let frameImage = CIImage(cvImageBuffer: buffer)
-                let transform = CGAffineTransform(rotationAngle: .pi/2)
-                poser.runModel(targetView: overlayView, pixelBuffer: buffer, transform: transform)
+                let which = "movenet"
+                switch which {
+                case "movenet":
+                    let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
+                    poser1.runModel(targetView: overlayView, pixelBuffer: buffer, transform: transform)
+                case "posenet":
+                    poser2.runModel(targetView: overlayView, pixelBuffer: buffer)
+                default:
+                    let transform = CGAffineTransform(rotationAngle: .pi/2)
+                    poser1.runModel(targetView: overlayView, pixelBuffer: buffer, transform: transform)
+                }
             }
         }
     }

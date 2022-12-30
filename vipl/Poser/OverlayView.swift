@@ -21,8 +21,8 @@ class OverlayView: UIImageView {
 
   /// Visualization configs
   private enum Config {
-    static let dot = (radius: CGFloat(10), color: UIColor.orange)
-    static let line = (width: CGFloat(5.0), color: UIColor.orange)
+    static let dot = (radius: CGFloat(5), color: UIColor.orange)
+    static let line = (width: CGFloat(2.0), color: UIColor.gray)
   }
 
   /// List of lines connecting each part to be visualized.
@@ -61,14 +61,18 @@ class OverlayView: UIImageView {
     UIRectFill(CGRectMake(0, 0, image.size.width, image.size.height))
     guard let strokes = strokes(from: person) else { return }
     image.draw(at: .zero)
+
     context.setLineWidth(Config.dot.radius)
+    context.setStrokeColor(Config.dot.color.cgColor)
     drawDots(at: context, dots: strokes.dots)
+    context.strokePath()
+
+    context.setLineWidth(Config.line.width)
+    context.setStrokeColor(Config.line.color.cgColor)
     drawLines(at: context, lines: strokes.lines)
-    context.setStrokeColor(UIColor.blue.cgColor)
     context.strokePath()
     guard let newImage = UIGraphicsGetImageFromCurrentImageContext() else { fatalError() }
-    // self.image = newImage
-    self.image = UIImage(cgImage: newImage.cgImage!, scale: newImage.scale, orientation: .right)
+    self.image = newImage
 /*
       guard
           let landscapeImage = UIImage(named: "imgname"),

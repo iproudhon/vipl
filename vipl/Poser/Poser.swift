@@ -26,7 +26,7 @@ class Poser {
             do {
                 switch self.modelType {
                 case .posenet:
-                    self.poseEstimator = try PoseNet(
+                    self.poseEstimator = try PoseNetTF(
                         threadCount: self.threadCount,
                         delegate: self.delegate)
                 case .movenetLighting, .movenetThunder:
@@ -41,25 +41,41 @@ class Poser {
         }
     }
 
+    func rotatePixelBuffer(pixelBuffer: CVPixelBuffer, transform: CGAffineTransform) -> CVPixelBuffer? {
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer).oriented(.right)
+        var outPixelBuffer : CVPixelBuffer?
+        let status = CVPixelBufferCreate(kCFAllocatorDefault,
+                                         Int(ciImage.extent.width),
+                                         Int(ciImage.extent.height),
+                                         CVPixelBufferGetPixelFormatType(pixelBuffer),
+                                         nil,
+                                         &outPixelBuffer)
+        guard (status == kCVReturnSuccess) else {
+            return nil
+        }
+        let ctx = CIContext(options: nil)
+        ctx.render(ciImage, to: outPixelBuffer!)
+        return outPixelBuffer
+    }
+
     func runModel(targetView: OverlayView, pixelBuffer: CVPixelBuffer, transform: CGAffineTransform) {
         guard !isRunning else { return }
         guard let estimator = poseEstimator else { return }
 
+        guard let outPixelBuffer = rotatePixelBuffer(pixelBuffer: pixelBuffer, transform: transform) else { return }
         queue.async {
             self.isRunning = true
             defer { self.isRunning = false }
 
             do {
-                let (result, times) = try estimator.estimateSinglePose(on: pixelBuffer)
+                let (result, times) = try estimator.estimateSinglePose(on: outPixelBuffer)
 
                 DispatchQueue.main.async {
                     // self.totalTimeLabel.text = String(format: "%.2fms", times.total * 1000)
                     // self.scoreLabel.text = String(format: "%.3f", result.score)
                     // print("Poser: \(String(format: "%.3f", result.score))  \(String(format: "%.2fms", times.total * 1000))")
 
-                    //let image = UIImage(ciImage: CIImage(cvPixelBuffer: pixelBuffer))
-                    // let rect = CGRectMake(0, 0, size.width, size.height)
-                    UIGraphicsBeginImageContextWithOptions(pixelBuffer.size, false, 1.0)
+                    UIGraphicsBeginImageContextWithOptions(outPixelBuffer.size, false, 1.0)
                     let image = UIGraphicsGetImageFromCurrentImageContext()!
                     UIGraphicsEndImageContext()
 
