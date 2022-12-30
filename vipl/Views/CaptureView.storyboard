@@ -21,9 +21,13 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <view contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="xLE-CY-cd6" customClass="CapturePreviewView" customModule="vipl" customModuleProvider="target">
-                                <rect key="frame" x="0.0" y="48" width="414" height="745"/>
+                                <rect key="frame" x="0.0" y="40" width="414" height="786"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <subviews>
+                                    <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="raI-eP-xjE" customClass="OverlayView" customModule="vipl" customModuleProvider="target">
+                                        <rect key="frame" x="0.0" y="0.0" width="414" height="745"/>
+                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                    </imageView>
                                     <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" showsMenuAsPrimaryAction="YES" contentHorizontalAlignment="left" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" changesSelectionAsPrimaryAction="YES" translatesAutoresizingMaskIntoConstraints="NO" id="r0v-Wx-bif">
                                         <rect key="frame" x="8" y="17" width="317" height="38"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
@@ -91,7 +95,7 @@
                                 <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                             </view>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="egK-NP-nUa">
-                                <rect key="frame" x="177" y="801.5" width="60" height="60"/>
+                                <rect key="frame" x="177" y="807.5" width="60" height="60"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                 <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
@@ -113,6 +117,7 @@
                         <outlet property="capturedVideoViewImg" destination="k8p-Na-fUM" id="jq0-4Z-hPM"/>
                         <outlet property="dismissCapturedVideoButton" destination="hjp-wL-BOL" id="abb-h3-IKW"/>
                         <outlet property="durationLabel" destination="Kbf-YX-Knw" id="WUw-4c-lAn"/>
+                        <outlet property="overlayView" destination="raI-eP-xjE" id="mZL-fX-68U"/>
                         <outlet property="previewView" destination="xLE-CY-cd6" id="SV7-8o-b6n"/>
                         <outlet property="recordButton" destination="egK-NP-nUa" id="DO2-7z-Igm"/>
                         <outlet property="resumeButton" destination="AkR-QD-EM5" id="v7o-jP-Dxz"/>

@@ -77,7 +77,7 @@ class ViewController: UIViewController, PHPickerViewControllerDelegate,   UIDocu
 
 extension ViewController {
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-        guard let url = urls[0] as? URL else { return }
+        let url = urls[0]
         guard let controller = UIStoryboard(name: "PlayerView", bundle: nil).instantiateInitialViewController() as? PlayerViewController else { return }
         controller.loadViewIfNeeded()
         controller.modalPresentationStyle = .fullScreen

@@ -44,6 +44,8 @@ class CaptureViewController: UIViewController, AVCaptureFileOutputRecordingDeleg
     @IBOutlet private weak var capturedVideoView: UIView!
     @IBOutlet private weak var capturedVideoViewImg: UIImageView!
     @IBOutlet private weak var dismissCapturedVideoButton: UIButton!
+
+    @IBOutlet private weak var overlayView: OverlayView!
     
     private var capturedMovieUrl: URL?      // .work.mov
     private var tmpMovieUrl: URL?           // .tmp.mov
@@ -1007,4 +1009,11 @@ extension AVCaptureDevice.DiscoverySession {
         }
         return uniqueDevicePositions.count
     }
+}
+
+// Movenet handler
+extension CaptureViewController {
+
+
+
 }

@@ -49,7 +49,7 @@ class OverlayView: UIImageView {
   /// - Parameters:
   ///     - image: The input image.
   ///     - person: Keypoints of the person detected (i.e. output of a pose estimation model)
-  func draw(at image: UIImage, person: Person) {
+  func draw(at image: UIImage, person: Person, transform: CGAffineTransform) {
     if context == nil {
       UIGraphicsBeginImageContext(image.size)
       guard let context = UIGraphicsGetCurrentContext() else {
@@ -57,6 +57,8 @@ class OverlayView: UIImageView {
       }
       self.context = context
     }
+    UIColor.clear.set()
+    UIRectFill(CGRectMake(0, 0, image.size.width, image.size.height))
     guard let strokes = strokes(from: person) else { return }
     image.draw(at: .zero)
     context.setLineWidth(Config.dot.radius)
@@ -65,7 +67,15 @@ class OverlayView: UIImageView {
     context.setStrokeColor(UIColor.blue.cgColor)
     context.strokePath()
     guard let newImage = UIGraphicsGetImageFromCurrentImageContext() else { fatalError() }
-    self.image = newImage
+    // self.image = newImage
+    self.image = UIImage(cgImage: newImage.cgImage!, scale: newImage.scale, orientation: .right)
+/*
+      guard
+          let landscapeImage = UIImage(named: "imgname"),
+          let landscapeCGImage = landscapeImage.cgImage
+      else { return }
+      let portraitImage = UIImage(cgImage: landscapeCGImage, scale: landscapeImage.scale, orientation: .right)
+ */
   }
 
   /// Draw the dots (i.e. keypoints).
