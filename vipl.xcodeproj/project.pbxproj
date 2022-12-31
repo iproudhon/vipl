@@ -52,6 +52,9 @@
 		85C8C650295F76F300012236 /* Joint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C645295F76F300012236 /* Joint.swift */; };
 		85C8C652295F77BE00012236 /* PoseNetMobileNet100S16FP16.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C651295F77BE00012236 /* PoseNetMobileNet100S16FP16.mlmodel */; };
 		85C8C654295F906400012236 /* PoseNetMobileNet075S16FP16.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C653295F906400012236 /* PoseNetMobileNet075S16FP16.mlmodel */; };
+		85C8C657295FAD3A00012236 /* DeepLabV3.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C656295FAD3A00012236 /* DeepLabV3.mlmodel */; };
+		85C8C659295FAD6C00012236 /* DeepLab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C658295FAD6C00012236 /* DeepLab.swift */; };
+		85C8C65B295FC33E00012236 /* CoreMLHelpers in Resources */ = {isa = PBXBuildFile; fileRef = 85C8C65A295FC33E00012236 /* CoreMLHelpers */; };
 		85DE2CB52947BF8300BBFCA8 /* PlayerView.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 85DE2CB42947BF8300BBFCA8 /* PlayerView.storyboard */; };
 		85DE2CBB2948496700BBFCA8 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85DE2CBA2948496700BBFCA8 /* PlayerView.swift */; };
 /* End PBXBuildFile section */
@@ -135,6 +138,9 @@
 		85C8C645295F76F300012236 /* Joint.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Joint.swift; sourceTree = "<group>"; };
 		85C8C651295F77BE00012236 /* PoseNetMobileNet100S16FP16.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = PoseNetMobileNet100S16FP16.mlmodel; sourceTree = "<group>"; };
 		85C8C653295F906400012236 /* PoseNetMobileNet075S16FP16.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = PoseNetMobileNet075S16FP16.mlmodel; sourceTree = "<group>"; };
+		85C8C656295FAD3A00012236 /* DeepLabV3.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = DeepLabV3.mlmodel; sourceTree = "<group>"; };
+		85C8C658295FAD6C00012236 /* DeepLab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLab.swift; sourceTree = "<group>"; };
+		85C8C65A295FC33E00012236 /* CoreMLHelpers */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = CoreMLHelpers; path = CoreMLHelpers/CoreMLHelpers; sourceTree = SOURCE_ROOT; };
 		85DE2CB42947BF8300BBFCA8 /* PlayerView.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = PlayerView.storyboard; sourceTree = "<group>"; };
 		85DE2CBA2948496700BBFCA8 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
 		B3E4F6BF0B19270CB2690F38 /* Pods-vipl.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-vipl.debug.xcconfig"; path = "Target Support Files/Pods-vipl/Pods-vipl.debug.xcconfig"; sourceTree = "<group>"; };
@@ -263,6 +269,8 @@
 				851040D52951B1FE00320EC7 /* RangeSlider.swift */,
 				85AC1B11293EBAEF00CA4556 /* Assets.xcassets */,
 				85AC1B16293EBAEF00CA4556 /* Info.plist */,
+				85C8C65A295FC33E00012236 /* CoreMLHelpers */,
+				85C8C655295FACF700012236 /* DeepLab */,
 				851040DF295C0C1400320EC7 /* Poser */,
 				85104100295F5F3A00320EC7 /* PoseNet */,
 			);
@@ -296,6 +304,15 @@
 				851040D92955185C00320EC7 /* CollectionView.storyboard */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		85C8C655295FACF700012236 /* DeepLab */ = {
+			isa = PBXGroup;
+			children = (
+				85C8C656295FAD3A00012236 /* DeepLabV3.mlmodel */,
+				85C8C658295FAD6C00012236 /* DeepLab.swift */,
+			);
+			path = DeepLab;
 			sourceTree = "<group>";
 		};
 		90261234AD25A732971EC154 /* Pods */ = {
@@ -417,6 +434,7 @@
 				851040FE295E134000320EC7 /* movenet_thunder.tflite in Resources */,
 				851040FF295E134000320EC7 /* posenet.tflite in Resources */,
 				85DE2CB52947BF8300BBFCA8 /* PlayerView.storyboard in Resources */,
+				85C8C65B295FC33E00012236 /* CoreMLHelpers in Resources */,
 				85169D4D294AA664007C081F /* CaptureView.storyboard in Resources */,
 				85AC1B15293EBAEF00CA4556 /* LaunchScreen.storyboard in Resources */,
 				851040DA2955185C00320EC7 /* CollectionView.storyboard in Resources */,
@@ -492,6 +510,7 @@
 				851040EF295C1B2800320EC7 /* PoseEstimator.swift in Sources */,
 				851040D62951B1FE00320EC7 /* RangeSlider.swift in Sources */,
 				851040EC295C1B2800320EC7 /* PoseData.swift in Sources */,
+				85C8C659295FAD6C00012236 /* DeepLab.swift in Sources */,
 				85DE2CBB2948496700BBFCA8 /* PlayerView.swift in Sources */,
 				851040EB295C1B2800320EC7 /* PoseNetTF.swift in Sources */,
 				85C8C64D295F76F300012236 /* PoseNet.swift in Sources */,
@@ -499,6 +518,7 @@
 				85AC1B09293EBAEE00CA4556 /* AppDelegate.swift in Sources */,
 				85C8C652295F77BE00012236 /* PoseNetMobileNet100S16FP16.mlmodel in Sources */,
 				85C8C64F295F76F300012236 /* PoseNetOutput.swift in Sources */,
+				85C8C657295FAD3A00012236 /* DeepLabV3.mlmodel in Sources */,
 				851040FC295D8E0E00320EC7 /* Poser.swift in Sources */,
 				85C8C64A295F76F300012236 /* CGPoint+Extension.swift in Sources */,
 				85C8C647295F76F300012236 /* PoseBuilderConfiguration.swift in Sources */,

@@ -1,0 +1,3 @@
+[submodule "CoreMLHelpers"]
+	path = CoreMLHelpers
+	url = https://github.com/hollance/CoreMLHelpers
