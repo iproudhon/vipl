@@ -311,8 +311,8 @@ class CaptureViewController: UIViewController, AVCaptureFileOutputRecordingDeleg
                 
                 if self.selectedMovieMode10BitDeviceFormat != nil {
                     DispatchQueue.main.async {
-                        self.HDRVideoModeButton.isHidden = false
-                        self.HDRVideoModeButton.isEnabled = true
+//                        self.HDRVideoModeButton.isHidden = false
+//                        self.HDRVideoModeButton.isEnabled = true
                     }
                     if self.HDRVideoMode == .on {
                         do {

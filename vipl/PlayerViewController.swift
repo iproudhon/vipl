@@ -47,12 +47,15 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     @IBOutlet weak var saveButton: UIButton!
     @IBOutlet weak var dismissButton: UIButton!
     @IBOutlet weak var overlayView: OverlayView!
+    @IBOutlet weak var poseButton: UIButton!
     
     private let rangeSlider = RangeSlider(frame: .zero)
 
     // for seek
     private var seekInProgress = false
     private var seekChaseTime = CMTime.zero
+
+    private var showPose = false
     
     @IBAction func dismiss(_ sender: Any) {
         self.dismiss(animated: true)
@@ -167,6 +170,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
 
     private var poser1 = Poser()
     private var poser2: PoseNet!
+    private var deepLab: DeepLab!
 
     var url: URL?
     
@@ -216,9 +220,12 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         rangeSlider.addTarget(self, action: #selector(rangeSliderValueChanged(_:)),
                               for: .valueChanged)
 
+        self.poseButton.tintColor = .systemGray
+
         poser1.updateModel()
         do {
             poser2 = try PoseNet()
+            deepLab = DeepLab()
         } catch {
             fatalError("Failed to load posenet model. \(error.localizedDescription)")
         }
@@ -317,7 +324,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     }
 
     func setupRangeMenu() {
-        func do_it(_ lowerOffset: Double, _ upperOffset: Double) {
+        func do_range(_ lowerOffset: Double, _ upperOffset: Double) {
             let lower = Swift.max(self.rangeSlider.min, self.rangeSlider.thumb - CGFloat(lowerOffset))
             let upper = Swift.min(self.rangeSlider.thumb + CGFloat(upperOffset), self.rangeSlider.max)
             self.rangeSlider.lowerBound = lower
@@ -326,26 +333,48 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         }
 
         var options = [UIAction]()
-        var item = UIAction(title: "Reset", state: .off, handler: { _ in
+        var item = UIAction(title: "Reset Range", state: .off, handler: { _ in
             self.rangeSlider.lowerBound = self.rangeSlider.min
             self.rangeSlider.upperBound = self.rangeSlider.max
             self.setupPlayRange(self.rangeSlider.min, self.rangeSlider.max)
         })
         options.insert(item, at: 0)
         item = UIAction(title: "1.5 : 1.5", state: .off, handler: { _ in
-            do_it(1.5, 1.5)
+            do_range(1.5, 1.5)
         })
         options.insert(item, at: 0)
         item = UIAction(title: "2.0 : 5.0", state: .off, handler: { _ in
-            do_it(2.0, 5.0)
+            do_range(2.0, 5.0)
         })
         options.insert(item, at: 0)
         item = UIAction(title: "0.3 : 0.2", state: .off, handler: { _ in
-            do_it(0.3, 0.2)
+            do_range(0.3, 0.2)
         })
         options.insert(item, at: 0)
 
-        let menu = UIMenu(title: "Ranges", children: options)
+        func do_poses(_ cmd: String) {
+            print(cmd)
+            switch cmd {
+            case "reset":
+                break
+            case "freeze":
+                break
+            default:
+                break
+            }
+        }
+
+        // posenet & foreground extraction
+        item = UIAction(title: "Reset Overlay", state: .off, handler: { _ in
+            do_poses("reset")
+        })
+        options.insert(item, at: 0)
+        item = UIAction(title: "Freeze Frame", state: .off, handler: { _ in
+            do_poses("freeze")
+        })
+        options.insert(item, at: 0)
+
+        let menu = UIMenu(title: "Ranges & Overlays", children: options)
         rangeButton.showsMenuAsPrimaryAction = true
         rangeButton.menu = menu
     }
@@ -525,6 +554,14 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             timeLabel.isEnabled = false
         }
     }
+
+    @IBAction func toggleShowPose(_ sender: Any) {
+        self.showPose = !self.showPose
+        self.poseButton.tintColor = self.showPose ? nil : .systemGray
+        if !self.showPose {
+            self.overlayView.image = nil
+        }
+    }
 }
 
 extension PlayerViewController {
@@ -612,16 +649,29 @@ extension PlayerViewController {
         if playerItemVideoOutput.hasNewPixelBuffer(forItemTime: currentTime) {
             if let buffer = playerItemVideoOutput.copyPixelBuffer(forItemTime: currentTime, itemTimeForDisplay: nil) {
                 // let frameImage = CIImage(cvImageBuffer: buffer)
-                let which = "movenet"
+
+                if self.showPose {
+                    let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
+                    poser1.runModel(targetView: overlayView, pixelBuffer: buffer, transform: transform)
+
+                }
+
+                let which = "none"
                 switch which {
                 case "movenet":
                     let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
                     poser1.runModel(targetView: overlayView, pixelBuffer: buffer, transform: transform)
                 case "posenet":
                     poser2.runModel(targetView: overlayView, pixelBuffer: buffer)
-                default:
-                    let transform = CGAffineTransform(rotationAngle: .pi/2)
+                case "deeplab":
+                    deepLab.runModel(targetView: overlayView, image: buffer, rotate: true)
+                case "both":
+                    deepLab.runModel(targetView: overlayView, image: buffer, rotate: true)
+                    let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
                     poser1.runModel(targetView: overlayView, pixelBuffer: buffer, transform: transform)
+                    deepLab.runModel(targetView: overlayView, image: buffer, rotate: true)
+                default:
+                    break
                 }
             }
         }
