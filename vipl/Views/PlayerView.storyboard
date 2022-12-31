@@ -39,7 +39,7 @@
                                 <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                             </view>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="0:00:0 / 0:00:0 / 0:00:0" textAlignment="right" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="UUe-ie-eKh">
-                                <rect key="frame" x="270" y="747" width="98" height="25"/>
+                                <rect key="frame" x="270" y="747" width="98" height="149"/>
                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMaxX="YES" heightSizable="YES" flexibleMaxY="YES"/>
                                 <accessibility key="accessibilityConfiguration">
                                     <accessibilityTraits key="traits" staticText="YES" notEnabled="YES"/>
@@ -70,7 +70,7 @@
                                 <rect key="frame" x="20" y="749" width="22" height="22"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
-                                <state key="normal" image="repeat.circle.fill" catalog="system"/>
+                                <state key="normal" image="repeat" catalog="system"/>
                                 <connections>
                                     <action selector="onRepeat:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="jgM-qF-tTg"/>
                                 </connections>
@@ -153,7 +153,7 @@
         <image name="figure.golf" catalog="system" width="83" height="128"/>
         <image name="play.fill" catalog="system" width="117" height="128"/>
         <image name="quotelevel" catalog="system" width="128" height="90"/>
-        <image name="repeat.circle.fill" catalog="system" width="128" height="123"/>
+        <image name="repeat" catalog="system" width="128" height="98"/>
         <image name="square.and.arrow.down" catalog="system" width="121" height="128"/>
         <image name="xmark" catalog="system" width="128" height="113"/>
         <systemColor name="systemBackgroundColor">

@@ -55,6 +55,10 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     private var seekInProgress = false
     private var seekChaseTime = CMTime.zero
 
+    private enum PoseEngine {
+        case none, posenet, posenetTf, movenetLightning, movenetThunder
+    }
+    private var poseEngine: PoseEngine = .movenetLightning
     private var showPose = false
     
     @IBAction func dismiss(_ sender: Any) {
@@ -257,13 +261,68 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     }
     
     override func viewDidLayoutSubviews() {
-        let margin: CGFloat = 40
-        let width = view.bounds.width - 2 * margin
-        let height: CGFloat = 30
+        self.setupLayout()
+    }
 
-        let x = (view.bounds.width - width) / 2
-        let y = (view.bounds.height - height * 3.7)
-        rangeSlider.frame = CGRect(x: x, y: y, width: width, height: height)
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        self.setupLayout()
+    }
+
+    private func setupLayout() {
+        /* playerView
+         *   - dismiss button
+         *   - overlay view
+         * rangeSlider
+         * pose, repeat, range, speed, left, play, right, time, save
+         */
+        let rect = CGRect(x: view.safeAreaInsets.left,
+                          y: view.safeAreaInsets.top,
+                          width: view.bounds.width - (view.safeAreaInsets.left + view.safeAreaInsets.right),
+                          height: view.bounds.height - (view.safeAreaInsets.top + view.safeAreaInsets.bottom))
+        let buttonWidth = 20, buttonHeight = 20, sliderHeight = 30, sliderMargin = 30, timeLabelWidth = 100
+        var x, y: CGFloat
+
+        // player view
+        self.playerView.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height - CGFloat(Int(buttonHeight * 3 / 2)) - CGFloat(sliderHeight))
+        self.overlayView.frame.size = self.playerView.frame.size
+        self.dismissButton.frame.origin = CGPoint(x: self.playerView.frame.size.width - self.dismissButton.frame.size.width, y: 0)
+
+        // range slider
+        x = rect.minX + CGFloat(sliderMargin)
+        y = self.playerView.frame.origin.y + self.playerView.frame.size.height + 1
+        self.rangeSlider.frame = CGRect(x: x, y: y, width: rect.width - CGFloat(2 * sliderMargin), height: CGFloat(sliderHeight))
+
+        y = rangeSlider.frame.origin.y + rangeSlider.frame.size.height * 4 / 3
+        x = rect.minX + CGFloat(buttonWidth)
+        self.poseButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
+        x += self.poseButton.frame.size.width
+
+        self.repeatButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
+        x += self.repeatButton.frame.size.width
+
+        self.playSpeedMenu.frame = CGRect(x: x, y: y, width: self.playSpeedMenu.frame.size.width, height: CGFloat(buttonHeight))
+        x += self.playSpeedMenu.frame.size.width
+
+        self.rangeButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
+        x += self.rangeButton.frame.size.width
+
+        // center buttons
+        x = rect.minX + (rect.width - CGFloat(buttonWidth) * 6) / 2
+        self.frameBackButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonWidth * 2), height: CGFloat(buttonHeight))
+        x += self.frameBackButton.frame.size.width
+
+        self.playPauseButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonWidth * 2), height: CGFloat(buttonHeight))
+        x += self.playPauseButton.frame.size.width
+
+        self.frameForwardButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonWidth * 2), height: CGFloat(buttonHeight))
+        x += self.frameForwardButton.frame.size.width
+
+        // right side buttons
+        x = rect.minX + rect.width - CGFloat(buttonWidth * 2 + timeLabelWidth)
+        self.timeLabel.frame = CGRect(x: x, y: y, width: CGFloat(timeLabelWidth), height: CGFloat(buttonHeight))
+        x += CGFloat(timeLabelWidth)
+
+        self.saveButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
     }
 
     func playUrl(url: URL) {
@@ -518,9 +577,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     }
     
     func setRepeatButtonImage() {
-        let img = self.isRepeat ? UIImage(systemName: "repeat.circle.fill") : UIImage(systemName: "repeat.circle")
-        guard let img = img else { return }
-        self.repeatButton.setImage(img, for: .normal)
+        self.repeatButton.tintColor = self.isRepeat ? nil : .systemGray
     }
     
     func updateUIForPlayerItemStatus() {
@@ -651,9 +708,15 @@ extension PlayerViewController {
                 // let frameImage = CIImage(cvImageBuffer: buffer)
 
                 if self.showPose {
-                    let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
-                    poser1.runModel(targetView: overlayView, pixelBuffer: buffer, transform: transform)
-
+                    switch self.poseEngine {
+                    case .posenet:
+                        poser2.runModel(targetView: overlayView, pixelBuffer: buffer)
+                    case .movenetLightning, .movenetThunder:
+                        let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
+                        poser1.runModel(targetView: overlayView, pixelBuffer: buffer, transform: transform)
+                    default:
+                        break
+                    }
                 }
 
                 let which = "none"
