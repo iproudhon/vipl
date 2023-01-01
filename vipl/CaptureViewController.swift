@@ -52,6 +52,7 @@ class CaptureViewController: UIViewController, AVCaptureFileOutputRecordingDeleg
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        setupLayout()
         
         if self.chosenCamera == nil {
             if let name = UserDefaults.standard.string(forKey: "the-camera") {
@@ -151,6 +152,34 @@ class CaptureViewController: UIViewController, AVCaptureFileOutputRecordingDeleg
     }
     
     override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        setupLayout()
+    }
+
+    private func setupLayout() {
+        // previewView
+        //   overlayView
+        //   camerasMenu, xButton
+        //   durationLabel
+        // captureButton
+        let rect = CGRect(x: view.safeAreaInsets.left,
+                          y: view.safeAreaInsets.top,
+                          width: view.bounds.width - (view.safeAreaInsets.left + view.safeAreaInsets.right),
+                          height: view.bounds.height - (view.safeAreaInsets.top + view.safeAreaInsets.bottom))
+        let buttonSize = 60, buttonMargin = 5
+        var x, y, height: CGFloat
+
+        height = rect.height - CGFloat(buttonSize + 2 * buttonMargin)
+        self.previewView.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: height)
+        self.overlayView.frame = CGRect(x: 0, y: 0, width: self.previewView.frame.width, height: self.previewView.frame.height)
+        self.camerasMenu.frame.origin = CGPoint(x: CGFloat(buttonMargin), y: CGFloat(buttonMargin))
+        self.xButton.frame.origin = CGPoint(x: self.previewView.frame.width - self.xButton.frame.size.width, y: 0)
+        self.durationLabel.frame.origin = CGPoint(x: (self.previewView.frame.width - self.durationLabel.frame.width) / 2, y: self.camerasMenu.frame.origin.y + self.camerasMenu.frame.height + 10)
+
+        x = rect.minX + (rect.width - CGFloat(buttonSize)) / 2
+        y = self.previewView.frame.origin.y + self.previewView.frame.size.height
+        y += ((rect.minY + rect.height - y) - CGFloat(buttonSize)) / 2
+        self.recordButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonSize), height: CGFloat(buttonSize))
     }
     
     override var shouldAutorotate: Bool {
@@ -166,6 +195,8 @@ class CaptureViewController: UIViewController, AVCaptureFileOutputRecordingDeleg
     
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
+
+        setupLayout()
 
         if let videoPreviewLayerConnection = previewView.videoPreviewLayer.connection {
             let deviceOrientation = UIDevice.current.orientation

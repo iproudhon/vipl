@@ -37,7 +37,9 @@
                                                 <command title="Item 2" id="5j0-8s-I4o"/>
                                             </children>
                                         </menu>
-                                        <state key="normal" title="Cameras"/>
+                                        <state key="normal" title="Cameras">
+                                            <color key="titleShadowColor" name="AccentColor"/>
+                                        </state>
                                     </button>
                                     <label hidden="YES" opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Camera Unavailable" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="yPD-lp-pOZ">
                                         <rect key="frame" x="104" y="259" width="152" height="21"/>

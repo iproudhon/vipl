@@ -261,20 +261,21 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     }
     
     override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
         self.setupLayout()
     }
 
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
         self.setupLayout()
     }
 
     private func setupLayout() {
-        /* playerView
-         *   - dismiss button
-         *   - overlay view
-         * rangeSlider
-         * pose, repeat, range, speed, left, play, right, time, save
-         */
+        // playerView
+        //   dismiss button
+        //   overlay view
+        // rangeSlider
+        // pose, repeat, range, speed, left, play, right, time, save
         let rect = CGRect(x: view.safeAreaInsets.left,
                           y: view.safeAreaInsets.top,
                           width: view.bounds.width - (view.safeAreaInsets.left + view.safeAreaInsets.right),

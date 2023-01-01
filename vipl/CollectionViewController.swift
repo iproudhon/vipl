@@ -83,6 +83,48 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        self.setupLayout()
+
+    }
+
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        self.setupLayout()
+    }
+
+    func setupLayout() {
+        // textField, searchButton, menuButton
+        // collectionView
+        // captureButton
+        let rect = CGRect(x: view.safeAreaInsets.left,
+                          y: view.safeAreaInsets.top,
+                          width: view.bounds.width - (view.safeAreaInsets.left + view.safeAreaInsets.right),
+                          height: view.bounds.height - (view.safeAreaInsets.top + view.safeAreaInsets.bottom))
+        var buttonSize = 34, captureButtonSize = 40
+        var x, y: CGFloat
+
+        x = rect.minX
+        y = rect.minY
+        self.textField.frame = CGRect(x: x, y: y, width: rect.width - CGFloat(2 * buttonSize), height: self.textField.frame.height)
+        x += self.textField.frame.width
+
+        self.searchButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonSize), height: CGFloat(buttonSize))
+        x += self.searchButton.frame.width
+
+        self.menuButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonSize), height: CGFloat(buttonSize))
+        x += self.menuButton.frame.width
+
+        x = rect.minX
+        y = rect.minY + self.textField.frame.height
+        var height = rect.height - self.textField.frame.height - CGFloat(captureButtonSize * 4 / 3)
+        self.collectionView.frame = CGRect(x: x, y: y, width: rect.width, height: height)
+
+        x = rect.minX + (rect.width - CGFloat(captureButtonSize)) / 2
+        y = self.collectionView.frame.origin.y + self.collectionView.frame.height
+        y += (rect.minY + rect.height - y - CGFloat(captureButtonSize)) / 2
+        self.captureButton.frame = CGRect(x: x, y: y, width: CGFloat(captureButtonSize), height: CGFloat(captureButtonSize))
+
+        self.numberOfCellsPerRow = view.bounds.width <= view.bounds.height ? 3 : 6
 
         // flowLayout.scrollDirection = .horizontal
         flowLayout.minimumLineSpacing = CGFloat(interspace)
