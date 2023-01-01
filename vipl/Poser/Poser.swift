@@ -58,7 +58,7 @@ class Poser {
         return outPixelBuffer
     }
 
-    func runModel(targetView: OverlayView, pixelBuffer: CVPixelBuffer, transform: CGAffineTransform) {
+    func runModel(targetView: OverlayView, pixelBuffer: CVPixelBuffer, transform: CGAffineTransform, time: CMTime, freeze: Bool = false) {
         guard !isRunning else { return }
         guard let estimator = poseEstimator else { return }
 
@@ -69,25 +69,19 @@ class Poser {
 
             do {
                 let (result, times) = try estimator.estimateSinglePose(on: outPixelBuffer)
+                if !freeze {
+                    targetView.setPose(result.score < self.minimumScore ? nil : result, time)
+                } else {
+                    if result.score >= self.minimumScore {
+                        targetView.pushPose(pose: result, snap: nil, time: time)
+                    }
+                }
 
                 DispatchQueue.main.async {
                     // self.totalTimeLabel.text = String(format: "%.2fms", times.total * 1000)
                     // self.scoreLabel.text = String(format: "%.3f", result.score)
                     // print("Poser: \(String(format: "%.3f", result.score))  \(String(format: "%.2fms", times.total * 1000))")
-
-                    UIGraphicsBeginImageContextWithOptions(outPixelBuffer.size, false, 1.0)
-                    let image = UIGraphicsGetImageFromCurrentImageContext()!
-                    UIGraphicsEndImageContext()
-
-                    // If score is too low, clear result remaining in the overlayView.
-                    if result.score < self.minimumScore {
-                        targetView.image = nil
-                        return
-                    }
-
-                    // Visualize the pose estimation result.
-                    targetView.image = nil
-                    targetView.draw(at: image, person: result, transform: transform)
+                    targetView.draw(size: outPixelBuffer.size)
                 }
             } catch {
                 os_log("Error running pose estimation.", type: .error)

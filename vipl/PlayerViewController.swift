@@ -413,11 +413,22 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         options.insert(item, at: 0)
 
         func do_poses(_ cmd: String) {
-            print(cmd)
             switch cmd {
             case "reset":
-                break
-            case "freeze":
+                self.overlayView.resetPoses()
+                self.refreshOverlayWithCurrentFrame()
+            case "freeze-both", "freeze-pose", "freeze-body":
+                // get current image & freeze
+                guard let item = self.player.currentItem else { return }
+                let currentTime = item.currentTime()
+                let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
+                guard let pixelBuffer = self.getFramePixelBuffer(asset: item.asset, time: currentTime) else { return }
+                if cmd == "freeze-both" || cmd == "freeze-pose" {
+                    poser1.runModel(targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: transform, time: currentTime, freeze: true)
+                }
+                if cmd == "freeze-both" || cmd == "freeze-body" {
+                    deepLab.runModel(targetView: self.overlayView, image: pixelBuffer, rotate: true, time: currentTime, freeze: true)
+                }
                 break
             default:
                 break
@@ -429,8 +440,16 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             do_poses("reset")
         })
         options.insert(item, at: 0)
-        item = UIAction(title: "Freeze Frame", state: .off, handler: { _ in
-            do_poses("freeze")
+        item = UIAction(title: "Freeze", state: .off, handler: { _ in
+            do_poses("freeze-both")
+        })
+        options.insert(item, at: 0)
+        item = UIAction(title: "Freeze Pose", state: .off, handler: { _ in
+            do_poses("freeze-pose")
+        })
+        options.insert(item, at: 0)
+        item = UIAction(title: "Freeze Body", state: .off, handler: { _ in
+            do_poses("freeze-body")
         })
         options.insert(item, at: 0)
 
@@ -616,9 +635,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     @IBAction func toggleShowPose(_ sender: Any) {
         self.showPose = !self.showPose
         self.poseButton.tintColor = self.showPose ? nil : .systemGray
-        if !self.showPose {
-            self.overlayView.image = nil
-        }
+        self.refreshOverlayWithCurrentFrame()
     }
 }
 
@@ -714,7 +731,7 @@ extension PlayerViewController {
                         poser2.runModel(targetView: overlayView, pixelBuffer: buffer)
                     case .movenetLightning, .movenetThunder:
                         let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
-                        poser1.runModel(targetView: overlayView, pixelBuffer: buffer, transform: transform)
+                        poser1.runModel(targetView: overlayView, pixelBuffer: buffer, transform: transform, time: currentTime)
                     default:
                         break
                     }
@@ -722,22 +739,39 @@ extension PlayerViewController {
 
                 let which = "none"
                 switch which {
-                case "movenet":
-                    let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
-                    poser1.runModel(targetView: overlayView, pixelBuffer: buffer, transform: transform)
-                case "posenet":
-                    poser2.runModel(targetView: overlayView, pixelBuffer: buffer)
                 case "deeplab":
-                    deepLab.runModel(targetView: overlayView, image: buffer, rotate: true)
-                case "both":
-                    deepLab.runModel(targetView: overlayView, image: buffer, rotate: true)
-                    let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
-                    poser1.runModel(targetView: overlayView, pixelBuffer: buffer, transform: transform)
-                    deepLab.runModel(targetView: overlayView, image: buffer, rotate: true)
+                    deepLab.runModel(targetView: overlayView, image: buffer, rotate: true, time: currentTime)
                 default:
                     break
                 }
             }
+        }
+    }
+}
+
+extension PlayerViewController {
+    func getFrameImage(asset: AVAsset, time: CMTime) -> CGImage? {
+        let imgGen = AVAssetImageGenerator(asset: asset)
+        imgGen.requestedTimeToleranceBefore = CMTime.zero
+        imgGen.requestedTimeToleranceAfter = CMTime.zero
+        return try? imgGen.copyCGImage(at: time, actualTime: nil)
+    }
+
+    func getFramePixelBuffer(asset: AVAsset, time: CMTime) -> CVPixelBuffer? {
+        return getFrameImage(asset: asset, time: time)?.pixelBuffer()
+    }
+
+    func refreshOverlayWithCurrentFrame() {
+        guard let item = self.player.currentItem else { return }
+        let currentTime = item.currentTime()
+        let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
+        guard let pixelBuffer = self.getFramePixelBuffer(asset: item.asset, time: currentTime) else { return }
+        if self.showPose {
+            self.poser1.runModel(targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: transform, time: currentTime)
+        } else {
+            self.overlayView.setPose(nil, CMTime.zero)
+            self.overlayView.setSnap(nil, CMTime.zero)
+            self.overlayView.draw(size: CGSize(width: pixelBuffer.size.height, height: pixelBuffer.size.width))
         }
     }
 }

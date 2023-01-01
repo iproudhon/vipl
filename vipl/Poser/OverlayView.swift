@@ -13,15 +13,28 @@
 // limitations under the License.
 // =============================================================================
 
+import AVFoundation
 import UIKit
 import os
 
 /// Custom view to visualize the pose estimation result on top of the input image.
 class OverlayView: UIImageView {
 
+  // frozen poses & snaps
+  private var poses = [(person: Person, time: CMTime)]()
+  private var snaps = [(snap: UIImage, time: CMTime)]()
+
+  // current time, pose & snap
+  private var time: CMTime?
+  private var pose: Person?
+  private var snap: UIImage?
+
   /// Visualization configs
   private enum Config {
-    static let dot = (radius: CGFloat(5), color: UIColor.orange)
+    static let faceColor = UIColor.orange
+    static let leftColor = UIColor.systemTeal
+    static let rightColor = UIColor.systemPurple
+    static let dotRadius = CGFloat(5.0)
     static let line = (width: CGFloat(2.0), color: UIColor.gray)
   }
 
@@ -41,45 +54,29 @@ class OverlayView: UIImageView {
     (from: BodyPart.rightKnee, to: BodyPart.rightAnkle),
   ]
 
-  /// CGContext to draw the detection result.
-  var context: CGContext!
-
   /// Draw the detected keypoints on top of the input image.
   ///
   /// - Parameters:
   ///     - image: The input image.
   ///     - person: Keypoints of the person detected (i.e. output of a pose estimation model)
-  func draw(at image: UIImage, person: Person, transform: CGAffineTransform) {
-    if context == nil {
-      UIGraphicsBeginImageContext(image.size)
-      guard let context = UIGraphicsGetCurrentContext() else {
-        fatalError("set current context faild")
-      }
-      self.context = context
-    }
-    UIColor.clear.set()
-    UIRectFill(CGRectMake(0, 0, image.size.width, image.size.height))
+  func draw(at context: CGContext, person: Person) {
     guard let strokes = strokes(from: person) else { return }
-    image.draw(at: .zero)
-
-    context.setLineWidth(Config.dot.radius)
-    context.setStrokeColor(Config.dot.color.cgColor)
-    drawDots(at: context, dots: strokes.dots)
-    context.strokePath()
 
     context.setLineWidth(Config.line.width)
     context.setStrokeColor(Config.line.color.cgColor)
     drawLines(at: context, lines: strokes.lines)
     context.strokePath()
-    guard let newImage = UIGraphicsGetImageFromCurrentImageContext() else { fatalError() }
-    self.image = newImage
-/*
-      guard
-          let landscapeImage = UIImage(named: "imgname"),
-          let landscapeCGImage = landscapeImage.cgImage
-      else { return }
-      let portraitImage = UIImage(cgImage: landscapeCGImage, scale: landscapeImage.scale, orientation: .right)
- */
+
+    context.setLineWidth(Config.dotRadius)
+    context.setStrokeColor(Config.faceColor.cgColor)
+    drawDots(at: context, dots: strokes.faceDots)
+    context.strokePath()
+    context.setStrokeColor(Config.leftColor.cgColor)
+    drawDots(at: context, dots: strokes.leftDots)
+    context.strokePath()
+    context.setStrokeColor(Config.rightColor.cgColor)
+    drawDots(at: context, dots: strokes.rightDots)
+    context.strokePath()
   }
 
   /// Draw the dots (i.e. keypoints).
@@ -90,10 +87,10 @@ class OverlayView: UIImageView {
   private func drawDots(at context: CGContext, dots: [CGPoint]) {
     for dot in dots {
       let dotRect = CGRect(
-        x: dot.x - Config.dot.radius / 2, y: dot.y - Config.dot.radius / 2,
-        width: Config.dot.radius, height: Config.dot.radius)
+        x: dot.x - Config.dotRadius / 2, y: dot.y - Config.dotRadius / 2,
+        width: Config.dotRadius, height: Config.dotRadius)
       let path = CGPath(
-        roundedRect: dotRect, cornerWidth: Config.dot.radius, cornerHeight: Config.dot.radius,
+        roundedRect: dotRect, cornerWidth: Config.dotRadius, cornerHeight: Config.dotRadius,
         transform: nil)
       context.addPath(path)
     }
@@ -116,7 +113,7 @@ class OverlayView: UIImageView {
   /// - Parameters:
   ///     - person: The detected person (i.e. output of a pose estimation model).
   private func strokes(from person: Person) -> Strokes? {
-    var strokes = Strokes(dots: [], lines: [])
+    var strokes = Strokes(faceDots: [], leftDots: [], rightDots: [], lines: [])
     // MARK: Visualization of detection result
     var bodyPartToDotMap: [BodyPart: CGPoint] = [:]
     for (index, part) in BodyPart.allCases.enumerated() {
@@ -124,7 +121,14 @@ class OverlayView: UIImageView {
         x: person.keyPoints[index].coordinate.x,
         y: person.keyPoints[index].coordinate.y)
       bodyPartToDotMap[part] = position
-      strokes.dots.append(position)
+      switch part {
+      case .nose, .leftEye, .rightEye, .leftEar, .rightEar:
+        strokes.faceDots.append(position)
+      case .leftShoulder, .leftElbow, .leftWrist, .leftHip, .leftKnee, .leftAnkle:
+        strokes.leftDots.append(position)
+      case .rightShoulder, .rightElbow, .rightWrist, .rightHip, .rightKnee, .rightAnkle:
+        strokes.rightDots.append(position)
+      }
     }
 
     do {
@@ -146,11 +150,61 @@ class OverlayView: UIImageView {
     }
     return strokes
   }
+
+  func pushPose(pose: Person?, snap: UIImage?, time: CMTime) {
+    if pose != nil {
+      poses.append((person: pose!, time: time))
+    }
+    if snap != nil {
+      snaps.append((snap: snap!, time: time))
+    }
+  }
+
+  func resetPoses() {
+    poses = []
+    snaps = []
+  }
+
+  func draw(size: CGSize) {
+    UIGraphicsBeginImageContext(size)
+    guard let context = UIGraphicsGetCurrentContext() else {
+      fatalError("set current context faild")
+    }
+
+    for img in self.snaps {
+      img.snap.draw(at: .zero)
+    }
+    if let snap = snap {
+      snap.draw(at: .zero)
+    }
+    for pos in self.poses {
+        draw(at: context, person: pos.person)
+    }
+    if let pose = pose {
+      draw(at: context, person: pose)
+    }
+
+    guard let image = UIGraphicsGetImageFromCurrentImageContext() else { fatalError() }
+    self.image = image
+    UIGraphicsEndImageContext()
+  }
+
+  func setPose(_ pose: Person?, _ time: CMTime) {
+    self.pose = pose
+    self.time = time
+  }
+
+  func setSnap(_ snap: UIImage?, _ time: CMTime) {
+    self.snap = snap
+    self.time = time
+  }
 }
 
 /// The strokes to be drawn in order to visualize a pose estimation result.
 fileprivate struct Strokes {
-  var dots: [CGPoint]
+  var faceDots: [CGPoint]
+  var leftDots: [CGPoint]
+  var rightDots: [CGPoint]
   var lines: [Line]
 }
 

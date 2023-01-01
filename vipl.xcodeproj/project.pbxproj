@@ -268,7 +268,6 @@
 			isa = PBXGroup;
 			children = (
 				85AC1B07293EBAEE00CA4556 /* vipl */,
-				85C8C68A295FCEAA00012236 /* CoreMLHelpers */,
 				85AC1B1E293EBAEF00CA4556 /* viplTests */,
 				85AC1B28293EBAEF00CA4556 /* viplUITests */,
 				85AC1B06293EBAEE00CA4556 /* Products */,
@@ -307,6 +306,7 @@
 				85C8C655295FACF700012236 /* DeepLab */,
 				851040DF295C0C1400320EC7 /* Poser */,
 				85104100295F5F3A00320EC7 /* PoseNet */,
+				85C8C68A295FCEAA00012236 /* CoreMLHelpers */,
 			);
 			path = vipl;
 			sourceTree = "<group>";
@@ -371,8 +371,7 @@
 				85C8C690295FCECD00012236 /* UIImage+Extensions.swift */,
 				85C8C692295FCECD00012236 /* UIImage+RawBytes.swift */,
 			);
-			name = CoreMLHelpers;
-			path = vipl/CoreMLHelpers;
+			path = CoreMLHelpers;
 			sourceTree = "<group>";
 		};
 		90261234AD25A732971EC154 /* Pods */ = {

@@ -5,7 +5,7 @@
 //  Created by Steve H. Jung on 12/30/22.
 //
 
-import Foundation
+import AVFoundation
 import CoreML
 import UIKit
 
@@ -77,7 +77,7 @@ class DeepLab {
     }
 
 
-    func runInner(targetView: OverlayView, rotate: Bool) {
+    func runInner(targetView: OverlayView, rotate: Bool, time: CMTime, freeze: Bool) {
         self.isRunning = true
         objc_sync_enter(self)
         let image = self.frameImage
@@ -101,9 +101,14 @@ class DeepLab {
         } else {
             // extract segment itself
             let extractedImage = extractImage(image: rotatedImage, outputImage: outputImage, withBlur: false)?.resized(to: CGSize(width: image.size.height, height: image.size.width))
-            let extractedImageWithAlpha = uiImageSetAlpha(uiImage: extractedImage!, alpha: 0.7)
+            let extractedImageWithAlpha = uiImageSetAlpha(uiImage: extractedImage!, alpha: 0.6)
             DispatchQueue.main.async {
-                targetView.image = extractedImageWithAlpha
+                if !freeze {
+                    targetView.setSnap(extractedImageWithAlpha, time)
+                } else {
+                    targetView.pushPose(pose: nil, snap: extractedImageWithAlpha, time: time)
+                }
+                targetView.draw(size: extractedImageWithAlpha.size)
             }
         }
 
@@ -114,18 +119,18 @@ class DeepLab {
         }
         objc_sync_exit(self)
         if more {
-            self.runInner(targetView: targetView, rotate: rotate)
+            self.runInner(targetView: targetView, rotate: rotate, time: time, freeze: freeze)
         }
     }
 
-    func runModel(targetView: OverlayView, image: CVPixelBuffer, rotate: Bool) {
+    func runModel(targetView: OverlayView, image: CVPixelBuffer, rotate: Bool, time: CMTime, freeze: Bool = false) {
         objc_sync_enter(self)
         self.frameImage = image
         objc_sync_exit(self)
         guard !isRunning else { return }
 
         queue.async {
-            self.runInner(targetView: targetView, rotate: rotate)
+            self.runInner(targetView: targetView, rotate: rotate, time: time, freeze: freeze)
         }
     }
 }
