@@ -29,6 +29,7 @@
 		85169D4D294AA664007C081F /* CaptureView.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 85169D4C294AA664007C081F /* CaptureView.storyboard */; };
 		85169D4F294AA8EB007C081F /* CapturePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85169D4E294AA8EB007C081F /* CapturePreviewView.swift */; };
 		85169D51294AAE71007C081F /* CaptureViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85169D50294AAE71007C081F /* CaptureViewController.swift */; };
+		85A501E329627223005F2382 /* Cache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A501E229627223005F2382 /* Cache.swift */; };
 		85AC1B09293EBAEE00CA4556 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AC1B08293EBAEE00CA4556 /* AppDelegate.swift */; };
 		85AC1B0B293EBAEE00CA4556 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AC1B0A293EBAEE00CA4556 /* SceneDelegate.swift */; };
 		85AC1B0D293EBAEE00CA4556 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AC1B0C293EBAEE00CA4556 /* ViewController.swift */; };
@@ -128,6 +129,7 @@
 		85169D4C294AA664007C081F /* CaptureView.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = CaptureView.storyboard; sourceTree = "<group>"; };
 		85169D4E294AA8EB007C081F /* CapturePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturePreviewView.swift; sourceTree = "<group>"; };
 		85169D50294AAE71007C081F /* CaptureViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureViewController.swift; sourceTree = "<group>"; };
+		85A501E229627223005F2382 /* Cache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cache.swift; sourceTree = "<group>"; };
 		85AC1B05293EBAEE00CA4556 /* vipl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = vipl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		85AC1B08293EBAEE00CA4556 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		85AC1B0A293EBAEE00CA4556 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -264,6 +266,14 @@
 			path = PoseNet;
 			sourceTree = "<group>";
 		};
+		85A501E12962720D005F2382 /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				85A501E229627223005F2382 /* Cache.swift */,
+			);
+			path = Utils;
+			sourceTree = "<group>";
+		};
 		85AC1AFC293EBAEE00CA4556 = {
 			isa = PBXGroup;
 			children = (
@@ -289,6 +299,7 @@
 		85AC1B07293EBAEE00CA4556 /* vipl */ = {
 			isa = PBXGroup;
 			children = (
+				85A501E12962720D005F2382 /* Utils */,
 				85AC1B7A2947BECA00CA4556 /* Views */,
 				85AC1B08293EBAEE00CA4556 /* AppDelegate.swift */,
 				85AC1B0A293EBAEE00CA4556 /* SceneDelegate.swift */,
@@ -578,6 +589,7 @@
 				85C8C648295F76F300012236 /* Pose.swift in Sources */,
 				851040EF295C1B2800320EC7 /* PoseEstimator.swift in Sources */,
 				851040D62951B1FE00320EC7 /* RangeSlider.swift in Sources */,
+				85A501E329627223005F2382 /* Cache.swift in Sources */,
 				851040EC295C1B2800320EC7 /* PoseData.swift in Sources */,
 				85C8C6A3295FCECD00012236 /* UIImage+RawBytes.swift in Sources */,
 				85C8C659295FAD6C00012236 /* DeepLab.swift in Sources */,

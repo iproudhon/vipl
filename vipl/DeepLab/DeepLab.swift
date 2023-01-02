@@ -28,8 +28,8 @@ class DeepLab {
     }
 
     // darken the background
-    func extractMask(outputImage: UIImage, withBlur: Bool) -> UIImage? {
-        guard let mask = CIImage(image: outputImage)?.removeWhitePixels() else { return nil}
+    func extractMask(mask: UIImage, withBlur: Bool) -> UIImage? {
+        guard let mask = CIImage(image: mask)?.removeWhitePixels() else { return nil}
         if !withBlur {
             return UIImage(ciImage: mask)
         }
@@ -41,8 +41,8 @@ class DeepLab {
     }
 
     // extracted segment image
-    func extractImage(image: CVPixelBuffer, outputImage: UIImage, withBlur: Bool) -> UIImage? {
-        var ciMask = CIImage(image: outputImage)
+    func extractImage(image: CVPixelBuffer, mask: UIImage, withBlur: Bool) -> UIImage? {
+        var ciMask = CIImage(image: mask)
         if let filter = CIFilter(name: "CIColorInvert") {
             filter.setValue(ciMask, forKey: kCIInputImageKey)
             ciMask = filter.outputImage!
@@ -76,31 +76,64 @@ class DeepLab {
         return newImage!
     }
 
+    // white: through, black: masking
+    func segmentsToMask(segments: MLMultiArray) -> CGImage? {
+        let width = segments.shape[0].intValue, height = segments.shape[1].intValue
+        var ptr = [UInt32](UnsafeMutableBufferPointer(start: UnsafeMutablePointer<UInt32>(OpaquePointer(segments.dataPointer)), count: width * height))
+        // regardless of type of object found
+        var pixels: [UInt32] = ptr.map({ UInt32($0 > 0 ? 0xFFFFFFFF : (UInt32(255) << 24)) })
 
-    func runInner(targetView: OverlayView, rotate: Bool, time: CMTime, freeze: Bool) {
+        let cgImage = pixels.withUnsafeMutableBytes { (ptr) -> CGImage in
+          let ctx = CGContext(
+            data: ptr.baseAddress,
+            width: Int(width),
+            height: Int(height),
+            bitsPerComponent: 8,
+            bytesPerRow: MemoryLayout<UInt32>.size * Int(width),
+            space: CGColorSpace(name: CGColorSpace.sRGB)!,
+            bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue
+              + CGImageAlphaInfo.premultipliedFirst.rawValue
+          )!
+          return ctx.makeImage()!
+        }
+        return cgImage
+    }
+
+    func runInner(assetId: String, targetView: OverlayView, rotate: Bool, time: CMTime, freeze: Bool) {
         self.isRunning = true
         objc_sync_enter(self)
         let image = self.frameImage
         objc_sync_exit(self)
         defer { self.isRunning = false }
 
+        let id = "\(assetId):mask:\(Int(time.seconds * 100))"
         guard let image = image,
               let rotatedImage = !rotate ? image: rotate90PixelBuffer(image, factor: 3),
-              let resizedImage = resizePixelBuffer(rotatedImage, width: Int(self.width), height: Int(self.height)),
-              let prediction = try? self.model.prediction(image: resizedImage),
-              let outputImage = prediction.semanticPredictions.image(min: 0, max: 1, axes: (0, 0, 1)) else {
+              let resizedImage = resizePixelBuffer(rotatedImage, width: Int(self.width), height: Int(self.height)) else {
             return
         }
+        let cgMask: CGImage
+        if let cached = Cache.Default.get(id) {
+            cgMask = cached as! CGImage
+        } else {
+            guard let prediction = try? self.model.prediction(image: resizedImage),
+                  let mask = segmentsToMask(segments: prediction.semanticPredictions) else {
+                return
+            }
+            cgMask = mask
+            Cache.Default.set(id, cgMask)
+        }
+        let mask = UIImage(cgImage: cgMask)
 
         if false {
             // alpha mask to block out background
-            let alphaMask = extractMask(outputImage: outputImage, withBlur: true)?.resized(to: CGSize(width: image.size.height, height: image.size.width))
+            let alphaMask = extractMask(mask: mask, withBlur: true)?.resized(to: CGSize(width: image.size.height, height: image.size.width))
             DispatchQueue.main.async {
                 targetView.image = alphaMask
             }
         } else {
             // extract segment itself
-            let extractedImage = extractImage(image: rotatedImage, outputImage: outputImage, withBlur: false)?.resized(to: CGSize(width: image.size.height, height: image.size.width))
+            let extractedImage = extractImage(image: rotatedImage, mask: mask, withBlur: false)?.resized(to: CGSize(width: image.size.height, height: image.size.width))
             let extractedImageWithAlpha = uiImageSetAlpha(uiImage: extractedImage!, alpha: 0.6)
             DispatchQueue.main.async {
                 if !freeze {
@@ -119,18 +152,18 @@ class DeepLab {
         }
         objc_sync_exit(self)
         if more {
-            self.runInner(targetView: targetView, rotate: rotate, time: time, freeze: freeze)
+            self.runInner(assetId: assetId, targetView: targetView, rotate: rotate, time: time, freeze: freeze)
         }
     }
 
-    func runModel(targetView: OverlayView, image: CVPixelBuffer, rotate: Bool, time: CMTime, freeze: Bool = false) {
+    func runModel(assetId: String, targetView: OverlayView, image: CVPixelBuffer, rotate: Bool, time: CMTime, freeze: Bool = false) {
         objc_sync_enter(self)
         self.frameImage = image
         objc_sync_exit(self)
         guard !isRunning else { return }
 
         queue.async {
-            self.runInner(targetView: targetView, rotate: rotate, time: time, freeze: freeze)
+            self.runInner(assetId: assetId, targetView: targetView, rotate: rotate, time: time, freeze: freeze)
         }
     }
 }

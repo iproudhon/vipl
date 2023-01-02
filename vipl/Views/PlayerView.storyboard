@@ -131,6 +131,7 @@
                         <outlet property="dismissButton" destination="fNi-Xt-kHl" id="tpX-Pt-bgT"/>
                         <outlet property="frameBackButton" destination="Tns-kl-QzZ" id="21P-wj-cu7"/>
                         <outlet property="frameForwardButton" destination="nq9-UY-GWv" id="VYd-nB-xgv"/>
+                        <outlet property="menuButton" destination="QlN-YA-GrD" id="k0t-ed-UuB"/>
                         <outlet property="overlayView" destination="tXC-No-uHB" id="Vgm-lf-Ifi"/>
                         <outlet property="playPauseButton" destination="8Ay-4e-sbK" id="WHd-8G-pEj"/>
                         <outlet property="playSpeedMenu" destination="CZ0-xF-sYE" id="snI-IQ-9NV"/>
@@ -138,7 +139,6 @@
                         <outlet property="poseButton" destination="npa-ke-Sla" id="9ux-oq-ly5"/>
                         <outlet property="rangeButton" destination="9W0-A1-4BE" id="Fbi-Ca-YBS"/>
                         <outlet property="repeatButton" destination="52I-YU-Rr9" id="suR-oF-SY4"/>
-                        <outlet property="saveButton" destination="QlN-YA-GrD" id="k0t-ed-UuB"/>
                         <outlet property="timeLabel" destination="UUe-ie-eKh" id="AGa-yk-Fzg"/>
                     </connections>
                 </viewController>

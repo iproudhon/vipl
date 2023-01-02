@@ -35,6 +35,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     let player = AVPlayer()
     let playerItemVideoOutput = AVPlayerItemVideoOutput(pixelBufferAttributes: [String(kCVPixelBufferPixelFormatTypeKey): kCVPixelFormatType_32BGRA])
     lazy var displayLink: CADisplayLink = CADisplayLink(target: self, selector: #selector(displayLinkFired(link:)))
+    var assetId: String?
 
     @IBOutlet var playerView: PlayerView!
     @IBOutlet weak var timeLabel: UILabel!
@@ -44,7 +45,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     @IBOutlet weak var repeatButton: UIButton!
     @IBOutlet weak var playSpeedMenu: UIButton!
     @IBOutlet weak var rangeButton: UIButton!
-    @IBOutlet weak var saveButton: UIButton!
+    @IBOutlet weak var menuButton: UIButton!
     @IBOutlet weak var dismissButton: UIButton!
     @IBOutlet weak var overlayView: OverlayView!
     @IBOutlet weak var poseButton: UIButton!
@@ -60,6 +61,8 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     }
     private var poseEngine: PoseEngine = .movenetLightning
     private var showPose = false
+
+    private var showSegments = false
     
     @IBAction func dismiss(_ sender: Any) {
         self.dismiss(animated: true)
@@ -116,6 +119,16 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         }
     }
 
+    private func setAssetId(asset: AVAsset?) {
+        guard let asset = asset as? AVURLAsset,
+        let creationDate = asset.creationDate?.value as? Date else {
+            self.assetId = ""
+            return
+        }
+        let v = Int64(creationDate.timeIntervalSince1970 * 1000) * Int64(asset.duration.seconds * 1000)
+        self.assetId = "\(asset.url.lastPathComponent):\(v)"
+    }
+
     @IBAction func save(asNew: Bool) {
         guard let currentItem = self.player.currentItem else { return }
 
@@ -146,6 +159,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                     } else {
                         guard let orgUrl = (self.player.currentItem?.asset as? AVURLAsset)?.url else { return }
                         self.player.replaceCurrentItem(with: nil)
+                        self.setAssetId(asset: nil)
                         do {
                             try FileManager.default.removeItem(at: orgUrl)
                             try FileManager.default.moveItem(at: url, to: orgUrl)
@@ -154,6 +168,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                             return
                         }
                         self.player.replaceCurrentItem(with: AVPlayerItem(url: orgUrl))
+                        self.setAssetId(asset: self.player.currentItem?.asset)
                         print("Video saved to \(String(describing: orgUrl.path))")
                     }
                 }
@@ -200,6 +215,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         self.playerView.player = player
         self.setupPlayerObservers()
         self.player.replaceCurrentItem(with: AVPlayerItem(url: url))
+        self.setAssetId(asset: self.player.currentItem?.asset)
         self.player.playImmediately(atRate: playSpeed)
     }
     
@@ -213,6 +229,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         self.playerView.player = player
         self.setupPlayerObservers()
         self.player.replaceCurrentItem(with: AVPlayerItem(url: url))
+        self.setAssetId(asset: self.player.currentItem?.asset)
         self.player.playImmediately(atRate: playSpeed)
     }
     
@@ -238,12 +255,13 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     override func viewDidAppear(_ animated: Bool) {
         guard let url = url else { return }
         setupPlaySpeedMenu()
-        setupSaveMenu()
+        setupMainMenu()
         setupRangeMenu()
 
         playerView.player = player
         setupPlayerObservers()
         player.replaceCurrentItem(with: AVPlayerItem(url: url))
+        self.setAssetId(asset: self.player.currentItem?.asset)
         player.playImmediately(atRate: playSpeed)
     }
 
@@ -323,18 +341,19 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         self.timeLabel.frame = CGRect(x: x, y: y, width: CGFloat(timeLabelWidth), height: CGFloat(buttonHeight))
         x += CGFloat(timeLabelWidth)
 
-        self.saveButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
+        self.menuButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
     }
 
     func playUrl(url: URL) {
         self.url = url
         setupPlaySpeedMenu()
-        setupSaveMenu()
+        setupMainMenu()
         setupRangeMenu()
 
         playerView.player = player
         setupPlayerObservers()
         player.replaceCurrentItem(with: AVPlayerItem(url: url))
+        self.setAssetId(asset: self.player.currentItem?.asset)
         player.playImmediately(atRate: playSpeed)
     }
     
@@ -360,9 +379,14 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         playSpeedMenu.showsMenuAsPrimaryAction = true
     }
     
-    func setupSaveMenu() {
+    func setupMainMenu() {
         var options = [UIAction]()
-        var item = UIAction(title: "Save", state: .off, handler: {_ in
+        var item = UIAction(title: "Toggle Segments", state: .off, handler: {_ in
+            self.showSegments = !self.showSegments
+            self.refreshOverlayWithCurrentFrame()
+        })
+        options.insert(item, at: 0)
+        item = UIAction(title: "Save", state: .off, handler: {_ in
             self.save(asNew: false)
         })
         options.insert(item, at: 0)
@@ -377,10 +401,10 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             self.dismiss(animated: true)
         })
         options.insert(item, at: 0)
-        let menu = UIMenu(title: "Save", children: options)
+        let menu = UIMenu(title: "vipl", children: options)
         
-        saveButton.showsMenuAsPrimaryAction = true
-        saveButton.menu = menu
+        menuButton.showsMenuAsPrimaryAction = true
+        menuButton.menu = menu
     }
 
     func setupRangeMenu() {
@@ -424,10 +448,10 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                 let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
                 guard let pixelBuffer = self.getFramePixelBuffer(asset: item.asset, time: currentTime) else { return }
                 if cmd == "freeze-both" || cmd == "freeze-pose" {
-                    poser1.runModel(targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: transform, time: currentTime, freeze: true)
+                    poser1.runModel(assetId: self.assetId!, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: transform, time: currentTime, freeze: true)
                 }
                 if cmd == "freeze-both" || cmd == "freeze-body" {
-                    deepLab.runModel(targetView: self.overlayView, image: pixelBuffer, rotate: true, time: currentTime, freeze: true)
+                    deepLab.runModel(assetId: self.assetId!, targetView: self.overlayView, image: pixelBuffer, rotate: true, time: currentTime, freeze: true)
                 }
                 break
             default:
@@ -731,18 +755,13 @@ extension PlayerViewController {
                         poser2.runModel(targetView: overlayView, pixelBuffer: buffer)
                     case .movenetLightning, .movenetThunder:
                         let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
-                        poser1.runModel(targetView: overlayView, pixelBuffer: buffer, transform: transform, time: currentTime)
+                        poser1.runModel(assetId: self.assetId!, targetView: overlayView, pixelBuffer: buffer, transform: transform, time: currentTime)
                     default:
                         break
                     }
                 }
-
-                let which = "none"
-                switch which {
-                case "deeplab":
-                    deepLab.runModel(targetView: overlayView, image: buffer, rotate: true, time: currentTime)
-                default:
-                    break
+                if self.showSegments {
+                    deepLab.runModel(assetId: self.assetId!, targetView: overlayView, image: buffer, rotate: true, time: currentTime)
                 }
             }
         }
@@ -767,11 +786,15 @@ extension PlayerViewController {
         let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
         guard let pixelBuffer = self.getFramePixelBuffer(asset: item.asset, time: currentTime) else { return }
         if self.showPose {
-            self.poser1.runModel(targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: transform, time: currentTime)
+            self.poser1.runModel(assetId: self.assetId!, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: transform, time: currentTime)
         } else {
             self.overlayView.setPose(nil, CMTime.zero)
-            self.overlayView.setSnap(nil, CMTime.zero)
-            self.overlayView.draw(size: CGSize(width: pixelBuffer.size.height, height: pixelBuffer.size.width))
         }
+        if self.showSegments {
+            deepLab.runModel(assetId: self.assetId!, targetView: overlayView, image: pixelBuffer, rotate: true, time: currentTime)
+        } else {
+            self.overlayView.setSnap(nil, CMTime.zero)
+        }
+        self.overlayView.draw(size: CGSize(width: pixelBuffer.size.height, height: pixelBuffer.size.width))
     }
 }
