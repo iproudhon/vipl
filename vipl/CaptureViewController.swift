@@ -998,7 +998,7 @@ extension CaptureViewController {
         self.capturedVideoViewImg.image = thumbnail
 
         let width = CGFloat(100)
-        var height = thumbnail.size.height * width / thumbnail.size.width
+        let height = thumbnail.size.height * width / thumbnail.size.width
         let x = self.view.frame.size.width - width
         let y = self.view.frame.size.height - height
         self.capturedVideoView.frame.size = CGSizeMake(width, height)

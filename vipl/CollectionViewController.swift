@@ -100,7 +100,7 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
                           y: view.safeAreaInsets.top,
                           width: view.bounds.width - (view.safeAreaInsets.left + view.safeAreaInsets.right),
                           height: view.bounds.height - (view.safeAreaInsets.top + view.safeAreaInsets.bottom))
-        var buttonSize = 34, captureButtonSize = 40
+        let buttonSize = 34, captureButtonSize = 40
         var x, y: CGFloat
 
         x = rect.minX
@@ -116,7 +116,7 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
 
         x = rect.minX
         y = rect.minY + self.textField.frame.height
-        var height = rect.height - self.textField.frame.height - CGFloat(captureButtonSize * 4 / 3)
+        let height = rect.height - self.textField.frame.height - CGFloat(captureButtonSize * 4 / 3)
         self.collectionView.frame = CGRect(x: x, y: y, width: rect.width, height: height)
 
         x = rect.minX + (rect.width - CGFloat(captureButtonSize)) / 2
@@ -272,7 +272,7 @@ extension CollectionViewController {
     }
 
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-        guard let url = urls[0] as? URL else { return }
+        let url = urls[0]
         guard let controller = UIStoryboard(name: "PlayerView", bundle: nil).instantiateInitialViewController() as? PlayerViewController else { return }
         controller.loadViewIfNeeded()
         controller.modalPresentationStyle = .fullScreen

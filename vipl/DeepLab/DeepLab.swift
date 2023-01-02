@@ -79,7 +79,7 @@ class DeepLab {
     // white: through, black: masking
     func segmentsToMask(segments: MLMultiArray) -> CGImage? {
         let width = segments.shape[0].intValue, height = segments.shape[1].intValue
-        var ptr = [UInt32](UnsafeMutableBufferPointer(start: UnsafeMutablePointer<UInt32>(OpaquePointer(segments.dataPointer)), count: width * height))
+        let ptr = [UInt32](UnsafeMutableBufferPointer(start: UnsafeMutablePointer<UInt32>(OpaquePointer(segments.dataPointer)), count: width * height))
         // regardless of type of object found
         var pixels: [UInt32] = ptr.map({ UInt32($0 > 0 ? 0xFFFFFFFF : (UInt32(255) << 24)) })
 
