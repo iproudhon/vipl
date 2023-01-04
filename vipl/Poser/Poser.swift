@@ -21,8 +21,9 @@ class Poser {
 
     var isRunning = false
 
-    func updateModel() {
+    func updateModel(modelType: ModelType = .movenetThunder) {
         queue.async {
+            self.modelType = modelType
             do {
                 switch self.modelType {
                 case .posenet:
@@ -58,7 +59,7 @@ class Poser {
         return outPixelBuffer
     }
 
-    func runModel(assetId: String, targetView: OverlayView, pixelBuffer: CVPixelBuffer, transform: CGAffineTransform, time: CMTime, freeze: Bool = false) {
+    func runModel(assetId: String?, targetView: OverlayView, pixelBuffer: CVPixelBuffer, transform: CGAffineTransform, time: CMTime, freeze: Bool = false) {
         guard !isRunning else { return }
         guard let estimator = poseEstimator else { return }
 
@@ -67,9 +68,9 @@ class Poser {
             self.isRunning = true
             defer { self.isRunning = false }
 
-            let id = "\(assetId):pose:\(Int(time.seconds * 100))"
             let result: Person
-            if let cached = Cache.Default.get(id) {
+            let id = "\(assetId ?? ""):pose:\(Int(time.seconds * 100))"
+            if assetId != nil, let cached = Cache.Default.get(id) {
                 result = cached as! Person
             } else {
                 guard let (uncached, _) = try? estimator.estimateSinglePose(on: outPixelBuffer) else {
@@ -77,7 +78,9 @@ class Poser {
                     return
                 }
                 result = uncached
-                Cache.Default.set(id, result)
+                if assetId != nil {
+                    Cache.Default.set(id, result)
+                }
             }
             if !freeze {
                 targetView.setPose(result.score < self.minimumScore ? nil : result, time)

@@ -11,6 +11,34 @@ import AVKit
 import UIKit
 import PhotosUI
 
+// TODO: this is not working properly, need to remove dirUpdated() method below
+class FolderMonitor {
+    private var fd: Int32?
+    private var observer: DispatchSourceFileSystemObject?
+
+    // TODO: error handling or better protocol
+    func observe(url: URL, handler: @escaping () -> Void) -> Bool {
+        self.fd = open(url.path, O_EVTONLY)
+        if self.fd! < 0 {
+            return false
+        }
+        // TODO: need to monitor on other events? [.write, .rename, .delete, .extend] instead of .write
+        self.observer = DispatchSource.makeFileSystemObjectSource(fileDescriptor: self.fd!, eventMask: .write , queue: DispatchQueue.main)
+        self.observer!.setEventHandler(handler: handler)
+        self.observer!.resume()
+        return true
+    }
+
+    func close() {
+        self.observer?.cancel()
+        if let fd = self.fd, fd > 0 {
+            Darwin.close(fd)
+        }
+        self.fd = nil
+        self.observer = nil
+    }
+}
+
 class CollectionViewCell: UICollectionViewCell {
     @IBOutlet weak var label: UILabel!
     @IBOutlet weak var img: UIImageView!
@@ -60,8 +88,10 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
     
     private var numberOfCellsPerRow = 3
     private var interspace = 2
-    
+
+    private var dirMonitor: FolderMonitor?
     private var swingItems: [SwingItem]?
+    private var dirModifiedTime: Date?
     
     // pickers
     private var imagePicker: UIImagePickerController?
@@ -77,14 +107,34 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
         
         collectionView.refreshControl = refreshControl
         refreshControl.addTarget(self, action: #selector(refresh(_:)), for: .valueChanged)
-        
-        swingItems = loadVideos()
+
+        DispatchQueue.main.async {
+            (self.swingItems, self.dirModifiedTime) = self.loadVideos()
+            self.collectionView.reloadData()
+        }
     }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         self.setupLayout()
+    }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+
+        DispatchQueue.main.async {
+            self.collectionView.reloadData()
+            if self.dirUpdated() {
+                (self.swingItems, self.dirModifiedTime) = self.loadVideos()
+            }
+            self.monitorDir()
+        }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        self.dirMonitor?.close()
+        self.dirMonitor = nil
     }
 
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
@@ -141,7 +191,7 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
     
     @objc func refresh(_ sender: Any) {
         DispatchQueue.main.async {
-            self.swingItems = self.loadVideos()
+            (self.swingItems, self.dirModifiedTime) = self.loadVideos()
             self.collectionView.reloadData()
             self.refreshControl.endRefreshing()
         }
@@ -160,7 +210,6 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
 }
 
 extension CollectionViewController {
-    
     func setupMenu() {
         // TODO: select & delete
         var options = [UIAction]()
@@ -177,15 +226,33 @@ extension CollectionViewController {
         menuButton.showsMenuAsPrimaryAction = true
         menuButton.menu = menu
     }
-    
-    func loadVideos() -> [SwingItem] {
+
+    func dirUpdated() -> Bool {
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let savedTime = self.dirModifiedTime ?? Date(timeIntervalSince1970: 0)
+        let attrs = try? FileManager.default.attributesOfItem(atPath: dir.path)
+        let fileTime = attrs?[FileAttributeKey.modificationDate] as? Date ?? Date(timeIntervalSince1970: 0)
+        return fileTime > savedTime
+    }
+
+    func monitorDir() {
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        self.dirMonitor = FolderMonitor()
+        _ = self.dirMonitor?.observe(url: dir) {
+            let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            (self.swingItems, self.dirModifiedTime) = self.loadVideos()
+            self.collectionView.reloadData()
+        }
+    }
+
+    func loadVideos() -> ([SwingItem], Date) {
         var swingItems: [SwingItem] = []
         do {
-            let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-            let items = try FileManager.default.contentsOfDirectory(atPath: dir[0].path)
+            let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let items = try FileManager.default.contentsOfDirectory(atPath: dir.path)
             
             for item in items {
-                let url = dir[0].appendingPathComponent(item)
+                let url = dir.appendingPathComponent(item)
                 let ext = url.pathExtension
                 let uti = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, ext as CFString, nil)
                 if UTTypeConformsTo((uti?.takeRetainedValue())!, kUTTypeMovie) {
@@ -197,10 +264,12 @@ extension CollectionViewController {
             swingItems.sort {
                 $0.creationDate! > $1.creationDate!
             }
-            return swingItems
+            let attrs = try FileManager.default.attributesOfItem(atPath: dir.path)
+            let modifiedtime = attrs[FileAttributeKey.modificationDate] as? Date ?? Date(timeIntervalSince1970: 0)
+            return (swingItems, modifiedtime)
         } catch {
             print("Directory listing failed: \(error)")
-            return []
+            return ([], Date(timeIntervalSince1970: 0))
         }
     }
     

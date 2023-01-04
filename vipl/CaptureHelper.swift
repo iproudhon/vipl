@@ -206,3 +206,9 @@ class CaptureHelper {
         return true
     }
 }
+
+extension CaptureHelper {
+    func addMetadata(asset: AVAsset, metadata: [AVMetadataItem]) -> Bool {
+        return false
+    }
+}

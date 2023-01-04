@@ -243,12 +243,14 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
 
         self.poseButton.tintColor = .systemGray
 
-        poser1.updateModel()
-        do {
-            poser2 = try PoseNet()
-            deepLab = DeepLab()
-        } catch {
-            fatalError("Failed to load posenet model. \(error.localizedDescription)")
+        DispatchQueue.main.async {
+            self.poser1.updateModel()
+            do {
+                self.poser2 = try PoseNet()
+                self.deepLab = DeepLab()
+            } catch {
+                fatalError("Failed to load posenet model. \(error.localizedDescription)")
+            }
         }
     }
 

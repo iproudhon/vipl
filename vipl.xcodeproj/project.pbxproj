@@ -30,6 +30,7 @@
 		85169D4F294AA8EB007C081F /* CapturePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85169D4E294AA8EB007C081F /* CapturePreviewView.swift */; };
 		85169D51294AAE71007C081F /* CaptureViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85169D50294AAE71007C081F /* CaptureViewController.swift */; };
 		85A501E329627223005F2382 /* Cache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A501E229627223005F2382 /* Cache.swift */; };
+		85A501E52963E383005F2382 /* CaptureMovieFileOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A501E42963E383005F2382 /* CaptureMovieFileOutput.swift */; };
 		85AC1B09293EBAEE00CA4556 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AC1B08293EBAEE00CA4556 /* AppDelegate.swift */; };
 		85AC1B0B293EBAEE00CA4556 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AC1B0A293EBAEE00CA4556 /* SceneDelegate.swift */; };
 		85AC1B0D293EBAEE00CA4556 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AC1B0C293EBAEE00CA4556 /* ViewController.swift */; };
@@ -130,6 +131,7 @@
 		85169D4E294AA8EB007C081F /* CapturePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturePreviewView.swift; sourceTree = "<group>"; };
 		85169D50294AAE71007C081F /* CaptureViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureViewController.swift; sourceTree = "<group>"; };
 		85A501E229627223005F2382 /* Cache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cache.swift; sourceTree = "<group>"; };
+		85A501E42963E383005F2382 /* CaptureMovieFileOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureMovieFileOutput.swift; sourceTree = "<group>"; };
 		85AC1B05293EBAEE00CA4556 /* vipl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = vipl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		85AC1B08293EBAEE00CA4556 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		85AC1B0A293EBAEE00CA4556 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -309,6 +311,7 @@
 				85AC1B762947BBB900CA4556 /* PlayerViewController.swift */,
 				85169D4E294AA8EB007C081F /* CapturePreviewView.swift */,
 				85169D50294AAE71007C081F /* CaptureViewController.swift */,
+				85A501E42963E383005F2382 /* CaptureMovieFileOutput.swift */,
 				851040DD295637B200320EC7 /* CaptureHelper.swift */,
 				851040D729540F8E00320EC7 /* AVPlayerController.swift */,
 				851040D52951B1FE00320EC7 /* RangeSlider.swift */,
@@ -586,6 +589,7 @@
 				851040F3295C1B4200320EC7 /* CGSize+TFLite.swift in Sources */,
 				851040EE295C1B2800320EC7 /* PoseConfig.swift in Sources */,
 				85C8C6AE295FD38400012236 /* CIImage+Extension.swift in Sources */,
+				85A501E52963E383005F2382 /* CaptureMovieFileOutput.swift in Sources */,
 				85C8C648295F76F300012236 /* Pose.swift in Sources */,
 				851040EF295C1B2800320EC7 /* PoseEstimator.swift in Sources */,
 				851040D62951B1FE00320EC7 /* RangeSlider.swift in Sources */,
