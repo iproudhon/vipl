@@ -55,6 +55,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     @IBOutlet weak var dismissButton: UIButton!
     @IBOutlet weak var overlayView: OverlayView!
     @IBOutlet weak var poseButton: UIButton!
+    @IBOutlet weak var soundButton: UIButton!
     
     private let rangeSlider = RangeSlider(frame: .zero)
 
@@ -69,6 +70,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     private var showPose = false
 
     private var showSegments = false
+    private var soundOn = true
     
     @IBAction func dismiss(_ sender: Any) {
         self.dismiss(animated: true)
@@ -241,7 +243,17 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
+        self.soundOn = !UserDefaults.standard.bool(forKey: "mute-sound")
+        self.player.isMuted = !self.soundOn
+        if self.soundOn {
+            self.soundButton.tintColor = nil
+            self.soundButton.setImage(UIImage(systemName: "speaker.wave.2.fill"), for: .normal)
+        } else {
+            self.soundButton.tintColor = .systemGray
+            self.soundButton.setImage(UIImage(systemName: "speaker.slash.fill"), for: .normal)
+        }
+
         // initialize the range slider
         view.addSubview(rangeSlider)
         rangeSlider.addTarget(self, action: #selector(rangeSliderValueChanged(_:)),
@@ -323,18 +335,13 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         self.rangeSlider.frame = CGRect(x: x, y: y, width: rect.width - CGFloat(2 * sliderMargin), height: CGFloat(sliderHeight))
 
         y = rangeSlider.frame.origin.y + rangeSlider.frame.size.height * 4 / 3
-        x = rect.minX + CGFloat(buttonWidth)
-        self.poseButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
-        x += self.poseButton.frame.size.width
+        x = rect.minX
 
-        self.repeatButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
-        x += self.repeatButton.frame.size.width
+        self.timeLabel.frame = CGRect(x: x, y: y, width: CGFloat(timeLabelWidth), height: CGFloat(buttonHeight))
+        x += CGFloat(timeLabelWidth)
 
         self.playSpeedMenu.frame = CGRect(x: x, y: y, width: self.playSpeedMenu.frame.size.width, height: CGFloat(buttonHeight))
         x += self.playSpeedMenu.frame.size.width
-
-        self.rangeButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
-        x += self.rangeButton.frame.size.width
 
         // center buttons
         x = rect.minX + (rect.width - CGFloat(buttonWidth) * 6) / 2
@@ -348,11 +355,21 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         x += self.frameForwardButton.frame.size.width
 
         // right side buttons
-        x = rect.minX + rect.width - CGFloat(buttonWidth * 2 + timeLabelWidth)
-        self.timeLabel.frame = CGRect(x: x, y: y, width: CGFloat(timeLabelWidth), height: CGFloat(buttonHeight))
-        x += CGFloat(timeLabelWidth)
+        x = rect.minX + rect.width - CGFloat(buttonWidth)
+        self.menuButton.frame = CGRect(x: x - CGFloat(buttonWidth), y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
+        x -= self.menuButton.frame.size.width * 2
 
-        self.menuButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
+        self.soundButton.frame = CGRect(x: x - CGFloat(buttonWidth), y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
+        x -= self.soundButton.frame.size.width
+
+        self.rangeButton.frame = CGRect(x: x - CGFloat(buttonWidth), y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
+        x -= self.rangeButton.frame.size.width
+
+        self.poseButton.frame = CGRect(x: x - CGFloat(buttonWidth), y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
+        x -= self.poseButton.frame.size.width
+
+        self.repeatButton.frame = CGRect(x: x - CGFloat(buttonWidth), y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
+        x -= self.repeatButton.frame.size.width
     }
 
     func playUrl(url: URL) {
@@ -434,8 +451,8 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             self.setupPlayRange(self.rangeSlider.min, self.rangeSlider.max)
         })
         options.insert(item, at: 0)
-        item = UIAction(title: "1.5 : 1.5", state: .off, handler: { _ in
-            do_range(1.5, 1.5)
+        item = UIAction(title: "1.75 : 1.5", state: .off, handler: { _ in
+            do_range(1.75, 1.5)
         })
         options.insert(item, at: 0)
         item = UIAction(title: "2.0 : 5.0", state: .off, handler: { _ in
@@ -670,6 +687,19 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         self.showPose = !self.showPose
         self.poseButton.tintColor = self.showPose ? nil : .systemGray
         self.refreshOverlayWithCurrentFrame()
+    }
+
+    @IBAction func toggleSound(_ sender: Any) {
+        self.soundOn = !self.soundOn
+        UserDefaults.standard.setValue(!self.soundOn, forKey: "mute-sound")
+        self.player.isMuted = !self.soundOn
+        if self.soundOn {
+            self.soundButton.tintColor = nil
+            self.soundButton.setImage(UIImage(systemName: "speaker.wave.2.fill"), for: .normal)
+        } else {
+            self.soundButton.tintColor = .systemGray
+            self.soundButton.setImage(UIImage(systemName: "speaker.slash.fill"), for: .normal)
+        }
     }
 }
 

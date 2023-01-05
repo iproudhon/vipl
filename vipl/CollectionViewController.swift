@@ -128,6 +128,12 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
                 (self.swingItems, self.dirModifiedTime) = self.loadVideos()
             }
             self.monitorDir()
+
+            // initialize ml models
+            DispatchQueue.global(qos: .utility).async {
+                Poser().updateModel()
+                _ = DeepLab()
+            }
         }
     }
 
@@ -139,6 +145,7 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
 
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
+        self.numberOfCellsPerRow = size.width <= size.height ? 3 : 6
         self.setupLayout()
     }
 
@@ -173,8 +180,6 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
         y = self.collectionView.frame.origin.y + self.collectionView.frame.height
         y += (rect.minY + rect.height - y - CGFloat(captureButtonSize)) / 2
         self.captureButton.frame = CGRect(x: x, y: y, width: CGFloat(captureButtonSize), height: CGFloat(captureButtonSize))
-
-        self.numberOfCellsPerRow = view.bounds.width <= view.bounds.height ? 3 : 6
 
         // flowLayout.scrollDirection = .horizontal
         flowLayout.minimumLineSpacing = CGFloat(interspace)

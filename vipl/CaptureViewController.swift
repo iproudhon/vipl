@@ -58,6 +58,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
     @IBOutlet private weak var dismissCapturedVideoButton: UIButton!
 
     @IBOutlet private weak var overlayView: OverlayView!
+    @IBOutlet private weak var textLogView: UITextView!
     
     private var capturedMovieUrl: URL?      // .work.mov
     private var tmpMovieUrl: URL?           // .tmp.mov
@@ -176,6 +177,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         setupLayout()
+        self.refreshCapturedVideoView()
     }
 
     private func setupLayout() {
@@ -183,6 +185,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         //   overlayView
         //   camerasMenu, xButton
         //   durationLabel
+        // textLogView
         // captureButton
         let rect = CGRect(x: view.safeAreaInsets.left,
                           y: view.safeAreaInsets.top,
@@ -197,6 +200,10 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         self.camerasMenu.frame.origin = CGPoint(x: CGFloat(buttonMargin), y: CGFloat(buttonMargin))
         self.xButton.frame.origin = CGPoint(x: self.previewView.frame.width - self.xButton.frame.size.width, y: 0)
         self.durationLabel.frame.origin = CGPoint(x: (self.previewView.frame.width - self.durationLabel.frame.width) / 2, y: self.camerasMenu.frame.origin.y + self.camerasMenu.frame.height + 10)
+
+        y = self.previewView.frame.origin.y + self.previewView.frame.height
+        height = rect.minY + rect.height - y
+        self.textLogView.frame = CGRect(x: rect.minX, y: self.previewView.frame.origin.y + self.previewView.frame.size.height, width: rect.width, height: height)
 
         x = rect.minX + (rect.width - CGFloat(buttonSize)) / 2
         y = self.previewView.frame.origin.y + self.previewView.frame.size.height
@@ -230,6 +237,10 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
             if let connection = self.videoOutput.connection(with: .video) {
                 connection.videoOrientation = newVideoOrientation
             }
+        }
+
+        coordinator.animate(alongsideTransition: nil) { _ in
+            self.refreshCapturedVideoView()
         }
     }
 
@@ -780,6 +791,9 @@ extension CaptureViewController {
         guard let url = self.capturedMovieUrl else { return }
         if !FileManager.default.fileExists(atPath: url.path) {
             self.capturedVideoView.isHidden = true
+
+            // expand textLogView to the right
+            self.textLogView.frame.size.width = view.bounds.width - (view.safeAreaInsets.left + view.safeAreaInsets.right)
             return
         }
 
@@ -789,8 +803,14 @@ extension CaptureViewController {
         self.capturedVideoViewImg.frame.origin = CGPoint(x: 0, y: 0)
         self.capturedVideoViewImg.image = thumbnail
 
-        let width = CGFloat(100)
-        let height = thumbnail.size.height * width / thumbnail.size.width
+        let width, height: CGFloat
+        if thumbnail.size.width < thumbnail.size.height {
+            width = CGFloat(100)
+            height = thumbnail.size.height * width / thumbnail.size.width
+        } else {
+            height = CGFloat(100)
+            width = thumbnail.size.width * height / thumbnail.size.height
+        }
         let x = self.view.frame.size.width - width
         let y = self.view.frame.size.height - height
         self.capturedVideoView.frame.size = CGSizeMake(width, height)
@@ -799,6 +819,9 @@ extension CaptureViewController {
         self.capturedVideoViewImg.frame.origin = CGPoint(x: 0, y: 0)
         self.dismissCapturedVideoButton.frame.origin = CGPoint(x: self.capturedVideoView.frame.width - self.dismissCapturedVideoButton.frame.width, y: 0)
         self.capturedVideoView.isHidden = false
+
+        // shrink textLogView to the left
+        self.textLogView.frame.size.width = view.bounds.width - (view.safeAreaInsets.left + view.safeAreaInsets.right) - width
     }
 }
 

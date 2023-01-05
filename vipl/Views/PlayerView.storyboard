@@ -38,8 +38,8 @@
                                 </subviews>
                                 <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                             </view>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="0:00:0 / 0:00:0 / 0:00:0" textAlignment="right" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="UUe-ie-eKh">
-                                <rect key="frame" x="270" y="747" width="98" height="149"/>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="0:00:0 / 0:00:0 / 0:00:0" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="UUe-ie-eKh">
+                                <rect key="frame" x="269" y="747" width="80" height="20"/>
                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMaxX="YES" heightSizable="YES" flexibleMaxY="YES"/>
                                 <accessibility key="accessibilityConfiguration">
                                     <accessibilityTraits key="traits" staticText="YES" notEnabled="YES"/>
@@ -94,7 +94,7 @@
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" showsMenuAsPrimaryAction="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" changesSelectionAsPrimaryAction="YES" translatesAutoresizingMaskIntoConstraints="NO" id="CZ0-xF-sYE">
-                                <rect key="frame" x="64" y="745" width="41" height="30"/>
+                                <rect key="frame" x="64" y="745" width="40" height="30"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <menu key="menu" title="Play Speed" id="WyE-pz-a31">
                                     <menuOptions key="menuOptions" singleSelection="YES"/>
@@ -123,6 +123,15 @@
                                     <action selector="setLowerUpperBounds:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="QH2-l4-A5G"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="SYf-eu-Gd8">
+                                <rect key="frame" x="135" y="749" width="24" height="22"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
+                                <state key="normal" image="speaker.wave.2.fill" catalog="system"/>
+                                <connections>
+                                    <action selector="toggleSound:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="Fuc-Ip-TUt"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="vDu-zF-Fre"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
@@ -139,6 +148,7 @@
                         <outlet property="poseButton" destination="npa-ke-Sla" id="9ux-oq-ly5"/>
                         <outlet property="rangeButton" destination="9W0-A1-4BE" id="Fbi-Ca-YBS"/>
                         <outlet property="repeatButton" destination="52I-YU-Rr9" id="suR-oF-SY4"/>
+                        <outlet property="soundButton" destination="SYf-eu-Gd8" id="bsd-En-iVt"/>
                         <outlet property="timeLabel" destination="UUe-ie-eKh" id="AGa-yk-Fzg"/>
                     </connections>
                 </viewController>
@@ -154,6 +164,7 @@
         <image name="play.fill" catalog="system" width="117" height="128"/>
         <image name="quotelevel" catalog="system" width="128" height="90"/>
         <image name="repeat" catalog="system" width="128" height="98"/>
+        <image name="speaker.wave.2.fill" catalog="system" width="128" height="88"/>
         <image name="square.and.arrow.down" catalog="system" width="121" height="128"/>
         <image name="xmark" catalog="system" width="128" height="113"/>
         <systemColor name="systemBackgroundColor">
