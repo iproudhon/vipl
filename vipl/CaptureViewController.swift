@@ -14,6 +14,9 @@ import MobileCoreServices
 
 class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDelegate {
 
+    // if set, ignores orientation and treat it as .landscapeRight to avoid unnecessary transforms
+    public var ignoreOrientation: Bool = true
+
     private var spinner: UIActivityIndicatorView!
 
     var windowOrientation: UIInterfaceOrientation {
@@ -45,6 +48,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
 
     private var transform: CGAffineTransform! = CGAffineTransformIdentity
     private var reverseTransform: CGAffineTransform! = CGAffineTransformIdentity
+    private var isMirrored: Bool = false
 
     @IBOutlet private weak var previewView: CapturePreviewView!
     @IBOutlet private weak var camerasMenu: UIButton!
@@ -221,6 +225,10 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
             videoPreviewLayerConnection.videoOrientation = newVideoOrientation
             if let videoSettings = self.videoOutput.recommendedVideoSettingsForAssetWriter(writingTo: .mov) {
                 (self.transform, self.reverseTransform) = self.getCaptureTransform(orientation: newVideoOrientation, isMirrored: videoPreviewLayerConnection.isVideoMirrored, videoSettings: videoSettings)
+                self.isMirrored = videoPreviewLayerConnection.isVideoMirrored
+            }
+            if let connection = self.videoOutput.connection(with: .video) {
+                connection.videoOrientation = newVideoOrientation
             }
         }
     }
@@ -351,6 +359,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
             DispatchQueue.main.async {
                 if let connection = self.previewView.videoPreviewLayer.connection {
                     (self.transform, self.reverseTransform) = self.getCaptureTransform(orientation: connection.videoOrientation, isMirrored: connection.isVideoMirrored, videoSettings: self.videoOutput.recommendedVideoSettingsForAssetWriter(writingTo: .mov)!)
+                    self.isMirrored = connection.isVideoMirrored
                 }
                 self.recordButton.isEnabled = true
             }
@@ -506,7 +515,6 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
             if UIDevice.current.isMultitaskingSupported {
                 self.backgroundRecordingID = UIApplication.shared.beginBackgroundTask(expirationHandler: nil)
             }
-            // connection?.videoOrientation = videoPreviewLayerOrientation!
             var videoSettings = videoOutput.recommendedVideoSettingsForAssetWriter(writingTo: .mov)
             if videoOutput.availableVideoCodecTypes.contains(.hevc) {
                 if videoSettings != nil {
@@ -515,26 +523,22 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
                     videoSettings = [AVVideoCodecKey:AVVideoCodecType.hevc]
                 }
             }
-            if let connection = self.videoOutput.connection(with: .video),
+            if self.ignoreOrientation,
+               let connection = self.videoOutput.connection(with: .video),
                let orientation = previewView.videoPreviewLayer.connection?.videoOrientation {
                 // MARK: this controls whether sample buffer is physically transformed to the video data output handler.
-                // connection.videoOrientation = orientation
+                connection.videoOrientation = orientation
             }
             let audioSettings = audioOutput.recommendedAudioSettingsForAssetWriter(writingTo: .mov)
 
             // TODO: error handling
             try? FileManager.default.removeItem(at: self.tmpMovieUrl!)
 
-            var transform = CGAffineTransformIdentity
-            if let connection = self.previewView.videoPreviewLayer.connection {
-                let (t, _) = self.getCaptureTransform(orientation: connection.videoOrientation, isMirrored: connection.isVideoMirrored, videoSettings: videoSettings!)
-                transform = t
-            }
-
             self.movieOut = CaptureMovieFileOuptut()
             sessionQueue.async {
                 // TODO: error handling
-                try? self.movieOut?.start(url: self.tmpMovieUrl!, videoSettings: videoSettings, transform: self.transform, audioSettings: audioSettings, location: self.locationManager.location)
+                let transform = self.ignoreOrientation ? CGAffineTransformIdentity : self.transform ?? CGAffineTransformIdentity
+                try? self.movieOut?.start(url: self.tmpMovieUrl!, videoSettings: videoSettings, transform: transform, audioSettings: audioSettings, location: self.locationManager.location)
             }
             self.onStartRecording()
         }
@@ -747,6 +751,8 @@ extension CaptureViewController {
             DispatchQueue.main.async {
                 if let connection = self.previewView.videoPreviewLayer.connection {
                     (self.transform, self.reverseTransform) = self.getCaptureTransform(orientation: connection.videoOrientation, isMirrored: connection.isVideoMirrored, videoSettings: self.videoOutput.recommendedVideoSettingsForAssetWriter(writingTo: .mov)!)
+                    self.isMirrored = connection.isVideoMirrored
+                    self.videoOutput?.connection(with: .video)?.videoOrientation = connection.videoOrientation
                 }
             }
         }
@@ -951,8 +957,15 @@ extension CaptureViewController {
                     DispatchQueue.main.async {
                         let poser = self.poser
                         if let pixelBuffer = CMSampleBufferGetImageBuffer(videoData.sampleBuffer) {
-                            // convert pixelbuffer to kCVPixelFormatType_32BGRA
-                            poser.runModel(assetId: nil, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: self.reverseTransform, time: CMTime.zero)
+                            var transform = self.reverseTransform
+                            if self.ignoreOrientation {
+                                if !self.isMirrored {
+                                    transform = CGAffineTransformIdentity
+                                } else {
+                                    transform = CGAffineTransform(-1, 0, 0, 1, CGFloat(CVPixelBufferGetWidth(pixelBuffer)), 0)
+                                }
+                            }
+                            poser.runModel(assetId: nil, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: transform!, time: CMTime.zero)
                         }
                     }
                 }
