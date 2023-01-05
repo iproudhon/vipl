@@ -68,13 +68,20 @@ class Poser {
     }
 
     func runModel(assetId: String?, targetView: OverlayView, pixelBuffer: CVPixelBuffer, transform: CGAffineTransform, time: CMTime, freeze: Bool = false) {
-        guard !isRunning else { return }
+        objc_sync_enter(self)
+        if isRunning {
+            objc_sync_exit(self)
+            return
+        }
+        isRunning = true
+        objc_sync_exit(self)
+
         guard let estimator = poseEstimator,
               let outPixelBuffer = transform == CGAffineTransformIdentity ? pixelBuffer : rotatePixelBuffer(pixelBuffer: pixelBuffer, transform: transform) else {
+            isRunning = false
             return
         }
         queue.async {
-            self.isRunning = true
             defer { self.isRunning = false }
 
             let result: Person
