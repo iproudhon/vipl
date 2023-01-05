@@ -37,6 +37,12 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     lazy var displayLink: CADisplayLink = CADisplayLink(target: self, selector: #selector(displayLinkFired(link:)))
     var assetId: String?
 
+    // video asset orientation & camera position
+    private var orientation: UIDeviceOrientation?
+    private var position: AVCaptureDevice.Position?
+    private var transform: CGAffineTransform?
+    private var reverseTransform: CGAffineTransform?
+
     @IBOutlet var playerView: PlayerView!
     @IBOutlet weak var timeLabel: UILabel!
     @IBOutlet weak var frameBackButton: UIButton!
@@ -94,8 +100,8 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     }
     
     @IBAction func setLowerUpperBounds(_ sender: Any) {
-        var lower = Swift.max(self.rangeSlider.min, self.rangeSlider.thumb - CGFloat(1.5))
-        var upper = Swift.min(self.rangeSlider.thumb + CGFloat(1.5), self.rangeSlider.max)
+        let lower = Swift.max(self.rangeSlider.min, self.rangeSlider.thumb - CGFloat(1.5))
+        let upper = Swift.min(self.rangeSlider.thumb + CGFloat(1.5), self.rangeSlider.max)
         
         self.rangeSlider.lowerBound = lower
         self.rangeSlider.upperBound = upper
@@ -264,6 +270,9 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         setupPlayerObservers()
         player.replaceCurrentItem(with: AVPlayerItem(url: url))
         self.setAssetId(asset: self.player.currentItem?.asset)
+        if let asset = self.player.currentItem?.asset {
+            (self.orientation, self.position, self.transform, self.reverseTransform) = asset.videoOrientation()
+        }
         player.playImmediately(atRate: playSpeed)
     }
 
@@ -447,13 +456,12 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                 // get current image & freeze
                 guard let item = self.player.currentItem else { return }
                 let currentTime = item.currentTime()
-                let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
                 guard let pixelBuffer = self.getFramePixelBuffer(asset: item.asset, time: currentTime) else { return }
                 if cmd == "freeze-both" || cmd == "freeze-pose" {
-                    poser1.runModel(assetId: self.assetId!, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: transform, time: currentTime, freeze: true)
+                    poser1.runModel(assetId: self.assetId!, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: self.reverseTransform!, time: currentTime, freeze: true)
                 }
                 if cmd == "freeze-both" || cmd == "freeze-body" {
-                    deepLab.runModel(assetId: self.assetId!, targetView: self.overlayView, image: pixelBuffer, rotate: true, time: currentTime, freeze: true)
+                    deepLab.runModel(assetId: self.assetId!, targetView: self.overlayView, image: pixelBuffer, transform: self.reverseTransform!, time: currentTime, freeze: true)
                 }
                 break
             default:
@@ -756,14 +764,13 @@ extension PlayerViewController {
                     case .posenet:
                         poser2.runModel(targetView: overlayView, pixelBuffer: buffer)
                     case .movenetLightning, .movenetThunder:
-                        let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
-                        poser1.runModel(assetId: self.assetId!, targetView: overlayView, pixelBuffer: buffer, transform: transform, time: currentTime)
+                        poser1.runModel(assetId: self.assetId!, targetView: overlayView, pixelBuffer: buffer, transform: self.reverseTransform!, time: currentTime)
                     default:
                         break
                     }
                 }
                 if self.showSegments {
-                    deepLab.runModel(assetId: self.assetId!, targetView: overlayView, image: buffer, rotate: true, time: currentTime)
+                    deepLab.runModel(assetId: self.assetId!, targetView: overlayView, image: buffer, transform: self.reverseTransform!, time: currentTime)
                 }
             }
         }
@@ -785,15 +792,14 @@ extension PlayerViewController {
     func refreshOverlayWithCurrentFrame() {
         guard let item = self.player.currentItem else { return }
         let currentTime = item.currentTime()
-        let transform = CGAffineTransform(rotationAngle: .pi*3.0/2.0)
         guard let pixelBuffer = self.getFramePixelBuffer(asset: item.asset, time: currentTime) else { return }
         if self.showPose {
-            self.poser1.runModel(assetId: self.assetId!, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: transform, time: currentTime)
+            self.poser1.runModel(assetId: self.assetId!, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: self.reverseTransform!, time: currentTime)
         } else {
             self.overlayView.setPose(nil, CMTime.zero)
         }
         if self.showSegments {
-            deepLab.runModel(assetId: self.assetId!, targetView: overlayView, image: pixelBuffer, rotate: true, time: currentTime)
+            deepLab.runModel(assetId: self.assetId!, targetView: overlayView, image: pixelBuffer, transform: self.reverseTransform!, time: currentTime)
         } else {
             self.overlayView.setSnap(nil, CMTime.zero)
         }

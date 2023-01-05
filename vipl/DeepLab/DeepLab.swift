@@ -16,6 +16,8 @@ class DeepLab {
 
     let queue = DispatchQueue(label: "deeplabv3.queue")
     var frameImage: CVPixelBuffer? = nil
+    var transform: CGAffineTransform? = nil
+    var time: CMTime? = nil
     var isRunning = false
 
     init() {
@@ -99,21 +101,46 @@ class DeepLab {
         return cgImage
     }
 
-    func runInner(assetId: String, targetView: OverlayView, rotate: Bool, time: CMTime, freeze: Bool) {
+    func rotatePixelBuffer(pixelBuffer: CVPixelBuffer, transform: CGAffineTransform) -> CVPixelBuffer? {
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer).transformed(by: transform)
+        var outPixelBuffer : CVPixelBuffer?
+        let status = CVPixelBufferCreate(kCFAllocatorDefault,
+                                         Int(ciImage.extent.width),
+                                         Int(ciImage.extent.height),
+                                         CVPixelBufferGetPixelFormatType(pixelBuffer),
+                                         nil,
+                                         &outPixelBuffer)
+        guard (status == kCVReturnSuccess) else {
+            return nil
+        }
+        let ctx = CIContext(options: nil)
+        ctx.render(ciImage, to: outPixelBuffer!)
+        return outPixelBuffer
+    }
+
+    func runInner(assetId: String?, targetView: OverlayView, freeze: Bool) {
         self.isRunning = true
         objc_sync_enter(self)
-        let image = self.frameImage
+        guard let image = self.frameImage,
+              let transform = self.transform,
+              let time = self.time else {
+            self.frameImage = nil
+            self.transform = nil
+            self.time = nil
+            objc_sync_exit(self)
+            return
+        }
         objc_sync_exit(self)
         defer { self.isRunning = false }
 
-        let id = "\(assetId):mask:\(Int(time.seconds * 100))"
-        guard let image = image,
-              let rotatedImage = !rotate ? image: rotate90PixelBuffer(image, factor: 3),
+        let id = "\(assetId ?? ""):mask:\(Int(time.seconds * 100))"
+        guard let rotatedImage = rotatePixelBuffer(pixelBuffer: image, transform: transform),
               let resizedImage = resizePixelBuffer(rotatedImage, width: Int(self.width), height: Int(self.height)) else {
             return
         }
+
         let cgMask: CGImage
-        if let cached = Cache.Default.get(id) {
+        if assetId != nil, let cached = Cache.Default.get(id) {
             cgMask = cached as! CGImage
         } else {
             guard let prediction = try? self.model.prediction(image: resizedImage),
@@ -121,7 +148,9 @@ class DeepLab {
                 return
             }
             cgMask = mask
-            Cache.Default.set(id, cgMask)
+            if assetId != nil {
+                Cache.Default.set(id, cgMask)
+            }
         }
         let mask = UIImage(cgImage: cgMask)
 
@@ -133,7 +162,9 @@ class DeepLab {
             }
         } else {
             // extract segment itself
-            let extractedImage = extractImage(image: rotatedImage, mask: mask, withBlur: false)?.resized(to: CGSize(width: image.size.height, height: image.size.width))
+            let resizedMask = mask.resized(to: rotatedImage.size)
+            let extractedImage = extractImage(image: rotatedImage, mask: resizedMask, withBlur: false)
+//            let extractedImage = extractImage(image: rotatedImage, mask: mask, withBlur: false)?.resized(to: CGSize(width: image.size.width, height: image.size.height))
             let extractedImageWithAlpha = uiImageSetAlpha(uiImage: extractedImage!, alpha: 0.6)
             DispatchQueue.main.async {
                 if !freeze {
@@ -149,21 +180,25 @@ class DeepLab {
         let more = self.frameImage != nil && image != self.frameImage
         if !more {
             self.frameImage = nil
+            self.transform = nil
+            self.time = nil
         }
         objc_sync_exit(self)
         if more {
-            self.runInner(assetId: assetId, targetView: targetView, rotate: rotate, time: time, freeze: freeze)
+            self.runInner(assetId: assetId, targetView: targetView, freeze: freeze)
         }
     }
 
-    func runModel(assetId: String, targetView: OverlayView, image: CVPixelBuffer, rotate: Bool, time: CMTime, freeze: Bool = false) {
+    func runModel(assetId: String, targetView: OverlayView, image: CVPixelBuffer, transform: CGAffineTransform, time: CMTime, freeze: Bool = false) {
         objc_sync_enter(self)
         self.frameImage = image
+        self.transform = transform
+        self.time = time
         objc_sync_exit(self)
         guard !isRunning else { return }
 
         queue.async {
-            self.runInner(assetId: assetId, targetView: targetView, rotate: rotate, time: time, freeze: freeze)
+            self.runInner(assetId: assetId, targetView: targetView, freeze: freeze)
         }
     }
 }

@@ -33,11 +33,13 @@ class CaptureMovieFileOuptut {
     }
 
     // TODO: metadata: location & start time
-    func start(url: URL, videoSettings: [String:Any]?, audioSettings: [String:Any]?, location: CLLocation?) throws {
+    // AVCaptureVideoOrientation
+    func start(url: URL, videoSettings: [String:Any]?, transform: CGAffineTransform, audioSettings: [String:Any]?, location: CLLocation?) throws {
         let writer = try AVAssetWriter(url: url, fileType: .mov)
 
         let videoWriterInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
         videoWriterInput.expectsMediaDataInRealTime = true
+        videoWriterInput.transform = transform
         if writer.canAdd(videoWriterInput) {
             writer.add(videoWriterInput)
         }

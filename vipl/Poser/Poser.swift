@@ -43,7 +43,7 @@ class Poser {
     }
 
     func rotatePixelBuffer(pixelBuffer: CVPixelBuffer, transform: CGAffineTransform) -> CVPixelBuffer? {
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer).oriented(.right)
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer).transformed(by: transform)
         var outPixelBuffer : CVPixelBuffer?
         let status = CVPixelBufferCreate(kCFAllocatorDefault,
                                          Int(ciImage.extent.width),
