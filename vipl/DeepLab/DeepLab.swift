@@ -10,22 +10,32 @@ import CoreML
 import UIKit
 
 class DeepLab {
-    var model: DeepLabV3
+    static var model: DeepLabV3?
     let width: CGFloat = 513
     let height: CGFloat = 513
 
     let queue = DispatchQueue(label: "deeplabv3.queue")
-    var frameImage: CVPixelBuffer? = nil
-    var transform: CGAffineTransform? = nil
-    var time: CMTime? = nil
-    var isRunning = false
+    var isRunning: Bool = false
 
+    class Task {
+        var assetId: String?
+        var pixelBuffer: CVPixelBuffer?
+        var transform: CGAffineTransform?
+        var time: CMTime?
+        var freeze: Bool?
+        var completionHandler: ((Task?, UIImage?) -> Void)?
+    }
+    var task: Task?
+
+    // TODO: make it thread-safe
     init() {
-        do {
-            let config = MLModelConfiguration()
-            model = try DeepLabV3(configuration: config)
-        } catch {
-            fatalError("Error loading DeepLabV3 mode: \(error.localizedDescription)")
+        if DeepLab.model == nil {
+            do {
+                let config = MLModelConfiguration()
+                DeepLab.model = try DeepLabV3(configuration: config)
+            } catch {
+                fatalError("Error loading DeepLabV3 mode: \(error.localizedDescription)")
+            }
         }
     }
 
@@ -101,7 +111,7 @@ class DeepLab {
         return cgImage
     }
 
-    func rotatePixelBuffer(pixelBuffer: CVPixelBuffer, transform: CGAffineTransform) -> CVPixelBuffer? {
+    func transformPixelBuffer(pixelBuffer: CVPixelBuffer, transform: CGAffineTransform) -> CVPixelBuffer? {
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer).transformed(by: transform)
         var outPixelBuffer : CVPixelBuffer?
         let status = CVPixelBufferCreate(kCFAllocatorDefault,
@@ -118,37 +128,42 @@ class DeepLab {
         return outPixelBuffer
     }
 
-    func runInner(assetId: String?, targetView: OverlayView, freeze: Bool) {
-        self.isRunning = true
+    func transformUIImage(image: UIImage, transform: CGAffineTransform) -> UIImage? {
+        var ciImage = image.ciImage
+        if ciImage == nil {
+            ciImage = CIImage(cgImage: image.cgImage!)
+        }
+        ciImage?.transformed(by: transform)
+        return UIImage(ciImage: ciImage!)
+    }
+
+    func runInner() {
         objc_sync_enter(self)
-        guard let image = self.frameImage,
-              let transform = self.transform,
-              let time = self.time else {
-            self.frameImage = nil
-            self.transform = nil
-            self.time = nil
+        guard let task = self.task,
+              let pixelBuffer = task.pixelBuffer,
+              let time = task.time else {
+            self.task = nil
             objc_sync_exit(self)
             return
         }
+        self.task = nil
         objc_sync_exit(self)
         defer { self.isRunning = false }
 
-        let id = "\(assetId ?? ""):mask:\(Int(time.seconds * 100))"
-        guard let rotatedImage = rotatePixelBuffer(pixelBuffer: image, transform: transform),
-              let resizedImage = resizePixelBuffer(rotatedImage, width: Int(self.width), height: Int(self.height)) else {
-            return
-        }
+        let id = "\(task.assetId ?? ""):mask:\(Int(time.seconds * 100))"
+        guard let resizedImage = pixelBuffer.resized(to: CGSize(width: self.width, height: self.height)) else { return }
 
         let cgMask: CGImage
-        if assetId != nil, let cached = Cache.Default.get(id) {
+        if task.assetId != nil, let cached = Cache.Default.get(id) {
             cgMask = cached as! CGImage
         } else {
-            guard let prediction = try? self.model.prediction(image: resizedImage),
+            guard let model = DeepLab.model,
+                  let prediction = try? model.prediction(image: resizedImage),
                   let mask = segmentsToMask(segments: prediction.semanticPredictions) else {
                 return
             }
             cgMask = mask
-            if assetId != nil {
+            if task.assetId != nil {
                 Cache.Default.set(id, cgMask)
             }
         }
@@ -156,49 +171,61 @@ class DeepLab {
 
         if false {
             // alpha mask to block out background
-            let alphaMask = extractMask(mask: mask, withBlur: true)?.resized(to: CGSize(width: image.size.height, height: image.size.width))
-            DispatchQueue.main.async {
-                targetView.image = alphaMask
-            }
+            let alphaMask = extractMask(mask: mask, withBlur: true)?.resized(to: CGSize(width: pixelBuffer.size.height, height: pixelBuffer.size.width))
+            task.completionHandler?(task, alphaMask)
         } else {
             // extract segment itself
-            let resizedMask = mask.resized(to: rotatedImage.size)
-            let extractedImage = extractImage(image: rotatedImage, mask: resizedMask, withBlur: false)
-//            let extractedImage = extractImage(image: rotatedImage, mask: mask, withBlur: false)?.resized(to: CGSize(width: image.size.width, height: image.size.height))
+            let resizedMask = mask.resized(to: pixelBuffer.size)
+            let extractedImage = extractImage(image: pixelBuffer, mask: resizedMask, withBlur: false)
             let extractedImageWithAlpha = uiImageSetAlpha(uiImage: extractedImage!, alpha: 0.6)
-            DispatchQueue.main.async {
-                if !freeze {
-                    targetView.setSnap(extractedImageWithAlpha, time)
-                } else {
-                    targetView.pushPose(pose: nil, snap: extractedImageWithAlpha, time: time)
-                }
-                targetView.draw(size: extractedImageWithAlpha.size)
-            }
+
+            task.completionHandler?(task, extractedImageWithAlpha)
         }
 
         objc_sync_enter(self)
-        let more = self.frameImage != nil && image != self.frameImage
-        if !more {
-            self.frameImage = nil
-            self.transform = nil
-            self.time = nil
-        }
+        let more = self.task != nil
         objc_sync_exit(self)
         if more {
-            self.runInner(assetId: assetId, targetView: targetView, freeze: freeze)
+            runInner()
         }
     }
 
     func runModel(assetId: String, targetView: OverlayView, image: CVPixelBuffer, transform: CGAffineTransform, time: CMTime, freeze: Bool = false) {
+        let task = Task()
+        task.assetId = assetId
+        task.transform = transform
+        task.pixelBuffer = transform == CGAffineTransformIdentity ? image : transformPixelBuffer(pixelBuffer: image, transform: transform)
+        task.time = time
+        task.freeze = freeze
+        task.completionHandler = { (task, image) in
+            guard let task = task,
+                  let image = image,
+                  let transform = task.transform,
+                  let revertedImage = transform == CGAffineTransformIdentity ? image : self.transformUIImage(image: image, transform: transform.inverted()) else {
+                return
+            }
+
+            DispatchQueue.main.async {
+                if !(task.freeze ?? true) {
+                    targetView.setSnap(revertedImage, task.time!)
+                } else {
+                    targetView.pushPose(pose: nil, snap: revertedImage, time: task.time!)
+                }
+                targetView.draw(size: revertedImage.size)
+            }
+        }
+
         objc_sync_enter(self)
-        self.frameImage = image
-        self.transform = transform
-        self.time = time
+        self.task = task
+        if isRunning {
+            objc_sync_exit(self)
+            return
+        }
+        isRunning = true
         objc_sync_exit(self)
-        guard !isRunning else { return }
 
         queue.async {
-            self.runInner(assetId: assetId, targetView: targetView, freeze: freeze)
+            self.runInner()
         }
     }
 }

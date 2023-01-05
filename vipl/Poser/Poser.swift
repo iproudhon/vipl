@@ -15,6 +15,9 @@ class Poser {
     private var delegate: Delegates = PoserConstants.defaultDelegate
     private let minimumScore = PoserConstants.minimumScore
 
+    static var movenetThunder: MoveNet?
+    static var movenetLightning: MoveNet?
+
     private var poseEstimator: PoseEstimator?
 
     let queue = DispatchQueue(label: "poser.queue")
@@ -30,11 +33,16 @@ class Poser {
                     self.poseEstimator = try PoseNetTF(
                         threadCount: self.threadCount,
                         delegate: self.delegate)
-                case .movenetLighting, .movenetThunder:
-                    self.poseEstimator = try MoveNet(
-                        threadCount: self.threadCount,
-                        delegate: self.delegate,
-                        modelType: self.modelType)
+                case .movenetLighting:
+                    if Poser.movenetLightning == nil {
+                        Poser.movenetLightning = try MoveNet(threadCount: self.threadCount, delegate: self.delegate, modelType: self.modelType)
+                    }
+                    self.poseEstimator = Poser.movenetLightning
+                case .movenetThunder:
+                    if Poser.movenetThunder == nil {
+                        Poser.movenetThunder = try MoveNet(threadCount: self.threadCount, delegate: self.delegate, modelType: self.modelType)
+                    }
+                    self.poseEstimator = Poser.movenetThunder
                 }
             } catch let error {
                 os_log("Error: %@", log: .default, type: .error, String(describing: error))
@@ -61,9 +69,10 @@ class Poser {
 
     func runModel(assetId: String?, targetView: OverlayView, pixelBuffer: CVPixelBuffer, transform: CGAffineTransform, time: CMTime, freeze: Bool = false) {
         guard !isRunning else { return }
-        guard let estimator = poseEstimator else { return }
-
-        guard let outPixelBuffer = rotatePixelBuffer(pixelBuffer: pixelBuffer, transform: transform) else { return }
+        guard let estimator = poseEstimator,
+              let outPixelBuffer = transform == CGAffineTransformIdentity ? pixelBuffer : rotatePixelBuffer(pixelBuffer: pixelBuffer, transform: transform) else {
+            return
+        }
         queue.async {
             self.isRunning = true
             defer { self.isRunning = false }
