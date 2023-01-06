@@ -45,6 +45,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
 
     @IBOutlet var playerView: PlayerView!
     @IBOutlet weak var timeLabel: UILabel!
+    @IBOutlet weak var textLogView: UITextView!
     @IBOutlet weak var frameBackButton: UIButton!
     @IBOutlet weak var frameForwardButton: UIButton!
     @IBOutlet weak var playPauseButton: UIButton!
@@ -286,6 +287,12 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             (self.orientation, self.position, self.transform, self.reverseTransform) = asset.videoOrientation()
         }
         player.playImmediately(atRate: playSpeed)
+
+        DispatchQueue.main.async {
+            if let asset = self.player.currentItem?.asset {
+                self.log(asset.info())
+            }
+        }
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -321,13 +328,19 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                           y: view.safeAreaInsets.top,
                           width: view.bounds.width - (view.safeAreaInsets.left + view.safeAreaInsets.right),
                           height: view.bounds.height - (view.safeAreaInsets.top + view.safeAreaInsets.bottom))
-        let buttonWidth = 20, buttonHeight = 20, sliderHeight = 30, sliderMargin = 30, timeLabelWidth = 100
+        let buttonWidth = 35, buttonHeight = 35, sliderHeight = 40, sliderMargin = 30, timeLabelWidth = 100
         var x, y: CGFloat
 
         // player view
         self.playerView.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height - CGFloat(Int(buttonHeight * 3 / 2)) - CGFloat(sliderHeight))
         self.overlayView.frame.size = self.playerView.frame.size
-        self.dismissButton.frame.origin = CGPoint(x: self.playerView.frame.size.width - self.dismissButton.frame.size.width, y: 0)
+
+        self.dismissButton.frame.origin = CGPoint(x: 0, y: 0)
+        self.menuButton.frame.origin = CGPoint(x: self.playerView.frame.size.width - self.menuButton.frame.size.width, y: 0)
+
+        let height = CGFloat(200)
+        y = self.playerView.frame.origin.y + self.playerView.frame.height - height
+        self.textLogView.frame = CGRect(x: rect.minX, y: y, width: rect.width, height: height)
 
         // range slider
         x = rect.minX + CGFloat(sliderMargin)
@@ -344,21 +357,19 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         x += self.playSpeedMenu.frame.size.width
 
         // center buttons
-        x = rect.minX + (rect.width - CGFloat(buttonWidth) * 6) / 2
-        self.frameBackButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonWidth * 2), height: CGFloat(buttonHeight))
+        var width = CGFloat(buttonWidth) * 4 / 3
+        x = rect.minX + (rect.width - width * 3) / 2
+        self.frameBackButton.frame = CGRect(x: x, y: y, width: width, height: CGFloat(buttonHeight))
         x += self.frameBackButton.frame.size.width
 
-        self.playPauseButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonWidth * 2), height: CGFloat(buttonHeight))
+        self.playPauseButton.frame = CGRect(x: x, y: y, width: width, height: CGFloat(buttonHeight))
         x += self.playPauseButton.frame.size.width
 
-        self.frameForwardButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonWidth * 2), height: CGFloat(buttonHeight))
+        self.frameForwardButton.frame = CGRect(x: x, y: y, width: width, height: CGFloat(buttonHeight))
         x += self.frameForwardButton.frame.size.width
 
         // right side buttons
-        x = rect.minX + rect.width - CGFloat(buttonWidth)
-        self.menuButton.frame = CGRect(x: x - CGFloat(buttonWidth), y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
-        x -= self.menuButton.frame.size.width * 2
-
+        x = rect.minX + rect.width
         self.soundButton.frame = CGRect(x: x - CGFloat(buttonWidth), y: y, width: CGFloat(buttonWidth), height: CGFloat(buttonHeight))
         x -= self.soundButton.frame.size.width
 
@@ -409,26 +420,33 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     
     func setupMainMenu() {
         var options = [UIAction]()
-        var item = UIAction(title: "Toggle Segments", state: .off, handler: {_ in
+        var item: UIAction
+        item = UIAction(title: "Toggle Logs", state: .off, handler: {_ in
+            DispatchQueue.main.async {
+                self.textLogView.isHidden = !self.textLogView.isHidden
+            }
+        })
+        options.append(item)
+        item = UIAction(title: "Toggle Segments", state: .off, handler: {_ in
             self.showSegments = !self.showSegments
             self.refreshOverlayWithCurrentFrame()
         })
-        options.insert(item, at: 0)
+        options.append(item)
         item = UIAction(title: "Save", state: .off, handler: {_ in
             self.save(asNew: false)
         })
-        options.insert(item, at: 0)
+        options.append(item)
         item = UIAction(title: "Save as New", state: .off, handler: {_ in
             self.save(asNew: true)
         })
-        options.insert(item, at: 0)
+        options.append(item)
         item = UIAction(title: "Delete", state: .off, handler: {_ in
             if let url = self.url {
                 try? FileManager.default.removeItem(at: url)
             }
             self.dismiss(animated: true)
         })
-        options.insert(item, at: 0)
+        options.append(item)
         let menu = UIMenu(title: "vipl", children: options)
         
         menuButton.showsMenuAsPrimaryAction = true
@@ -834,5 +852,22 @@ extension PlayerViewController {
             self.overlayView.setSnap(nil, CMTime.zero)
         }
         self.overlayView.draw(size: CGSize(width: pixelBuffer.size.height, height: pixelBuffer.size.width))
+    }
+}
+
+extension PlayerViewController {
+    func log(_ msg: String) {
+        DispatchQueue.main.async {
+            if let logView = self.textLogView {
+                logView.text += msg + "\n"
+                let len = logView.text.count
+                logView.scrollRangeToVisible(NSMakeRange(len - 1, 0))
+                if len > 2000 {
+                    let startIndex = logView.text.index(logView.text.startIndex, offsetBy: len-2000)
+                    logView.text = String(logView.text[startIndex...])
+                }
+            }
+        }
+        print(msg)
     }
 }

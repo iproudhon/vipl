@@ -550,8 +550,8 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
                 // TODO: error handling
                 let transform = self.ignoreOrientation ? CGAffineTransformIdentity : self.transform ?? CGAffineTransformIdentity
                 try? self.movieOut?.start(url: self.tmpMovieUrl!, videoSettings: videoSettings, transform: transform, audioSettings: audioSettings, location: self.locationManager.location)
+                self.onStartRecording()
             }
-            self.onStartRecording()
         }
         return
     }
@@ -1045,4 +1045,22 @@ extension CaptureViewController {
 
 // Movenet handler
 extension CaptureViewController {
+}
+
+// logging to UITextView
+extension CaptureViewController {
+    func log(_ msg: String) {
+        DispatchQueue.main.async {
+            if let logView = self.textLogView {
+                logView.text += msg + "\n"
+                let len = logView.text.count
+                logView.scrollRangeToVisible(NSMakeRange(len - 1, 0))
+                if len > 2000 {
+                    let startIndex = logView.text.index(logView.text.startIndex, offsetBy: len-2000)
+                    logView.text = String(logView.text[startIndex...])
+                }
+            }
+        }
+        print(msg)
+    }
 }

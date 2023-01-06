@@ -61,4 +61,46 @@ extension AVAsset {
         }
         return (orientation, device, transform, reverseTransform)
     }
+
+    func info() -> String {
+        var info = [String:String]()
+        let orientation: UIDeviceOrientation
+        (orientation, _, _, _) = self.videoOrientation()
+        switch orientation {
+        case .portrait:
+            info["orientation"] = "portrait"
+        case .portraitUpsideDown:
+            info["orientation"] = "portrait-upside-down"
+        case .landscapeRight:
+            info["orientation"] = "landscape"
+        case .landscapeLeft:
+            info["orientation"] = "landscape-left"
+        default:
+            info["orientation"] = "unknown"
+        }
+        info["duration"] = String(format: "%.2f", self.duration.seconds)
+        for item in self.metadata {
+            let key = String(item.key as! NSString)
+            switch key {
+            case String(AVMetadataKey.commonKeyCreationDate as NSString), String(AVMetadataKey.quickTimeMetadataKeyCreationDate as NSString):
+                info["creation-date"] = String(item.value as! NSString)
+            case String(AVMetadataKey.commonKeyDescription as NSString):
+                info["description"] = String(item.value as! NSString)
+            case String(AVMetadataKey.quickTimeMetadataKeyLocationISO6709 as NSString):
+                if item.identifier == AVMetadataIdentifier.quickTimeMetadataLocationISO6709 {
+                    info["location"] = String(item.value as! NSString)
+                } else if item.identifier == AVMetadataIdentifier.quickTimeMetadataLocationHorizontalAccuracyInMeters {
+                    info["location.horizontalAccuracy"] = String(item.value as! NSString)
+                }
+            default:
+                break
+            }
+        }
+        if let data = try? JSONSerialization.data(withJSONObject: info, options: [JSONSerialization.WritingOptions.prettyPrinted]),
+           let string = String(data: data, encoding: String.Encoding.utf8) {
+            return string
+        } else {
+            return "whatever"
+        }
+    }
 }
