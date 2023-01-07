@@ -275,47 +275,11 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         }
 
         session.beginConfiguration()
-        session.sessionPreset = .photo
-
-        // video input device
-        do {
-            guard let videoDeviceInput = try? CaptureHelper.getCaptureDeviceInput(cam: self.chosenCamera!) else {
-                print("Default video device not found")
-                setupResult = .configurationFailed
-                session.commitConfiguration()
-                return
-            }
-            if session.canAddInput(videoDeviceInput) {
-                session.addInput(videoDeviceInput)
-                self.videoDeviceInput = videoDeviceInput
-
-                DispatchQueue.main.async {
-                    var initialVideoOrientation: AVCaptureVideoOrientation = .portrait
-                    if self.windowOrientation != .unknown {
-                        if let videoOrientation = AVCaptureVideoOrientation(interfaceOrientation: self.windowOrientation) {
-                            initialVideoOrientation = videoOrientation
-                        }
-                    }
-                    self.previewView.videoPreviewLayer.connection?.videoOrientation = initialVideoOrientation
-                }
-            } else {
-                print("Can't add video device input to the session.")
-                setupResult = .configurationFailed
-                session.commitConfiguration()
-                return
-            }
-        } catch {
-            print("Can't create video device input: \(error)")
-            setupResult = .configurationFailed
-            session.commitConfiguration()
-            return
-        }
-
         // audio input device
         do {
             let audioDevice = AVCaptureDevice.default(for: .audio)
             let audioDeviceInput = try AVCaptureDeviceInput(device: audioDevice!)
-            
+
             if session.canAddInput(audioDeviceInput) {
                 session.addInput(audioDeviceInput)
             } else {
@@ -324,9 +288,10 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         } catch {
             print("Can't create audio device input: \(error)")
         }
-
         session.commitConfiguration()
-        self.selectCamera()
+
+        // video input device
+        setupResult = self.selectCamera()
     }
     
     @IBAction private func resumeInterruptedSession(_ resumeButton: UIButton) {
@@ -373,7 +338,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         videoOutput.setSampleBufferDelegate(self, queue: self.sessionQueue)
 
         let depthDataOutput = AVCaptureDepthDataOutput()
-        depthDataOutput.isFilteringEnabled = true
+        depthDataOutput.isFilteringEnabled = false
         depthDataOutput.alwaysDiscardsLateDepthData = false
         depthDataOutput.setDelegate(self, callbackQueue: self.sessionQueue)
 
@@ -384,7 +349,6 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         let audioOutput = AVCaptureAudioDataOutput()
         audioOutput.setSampleBufferDelegate(self, queue: self.sessionQueue)
 
-        self.session.beginConfiguration()
         if self.session.canAddOutput(videoOutput) &&
             self.session.canAddOutput(audioOutput) {
             self.session.addOutput(videoOutput)
@@ -401,28 +365,28 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
                 connection.preferredVideoStabilizationMode = .auto
             }
         }
-        self.session.commitConfiguration()
-
-        var outputs = [videoOutput, audioOutput]
-        if depthEnabled && depthDataOutput.connection(with: .depthData) != nil {
-            outputs.append(depthDataOutput)
-        }
-        let outputSync = AVCaptureDataOutputSynchronizer(dataOutputs: outputs)
-        outputSync.setDelegate(self, queue: self.sessionQueue)
 
         self.videoOutput = videoOutput
         self.depthDataOutput = depthDataOutput
         self.metadataOutput = metadataOutput
         self.audioOutput = audioOutput
-        self.outputSync = outputSync
+    }
 
-        DispatchQueue.main.async {
-            if let connection = self.previewView.videoPreviewLayer.connection {
-                (self.transform, self.reverseTransform) = self.getCaptureTransform(orientation: connection.videoOrientation, isMirrored: connection.isVideoMirrored, videoSettings: self.videoOutput.recommendedVideoSettingsForAssetWriter(writingTo: .mov)!)
-                self.isMirrored = connection.isVideoMirrored
-            }
-            self.recordButton.isEnabled = true
+    private func setupSyncedOutputs(depthEnabled: Bool) {
+        var outputs = [AVCaptureOutput]()
+        if let videoOutput = self.videoOutput,
+           let audioOutput = self.audioOutput {
+            outputs.append(videoOutput)
+            outputs.append(audioOutput)
         }
+        if depthEnabled,
+           let depthDataOutput = self.depthDataOutput,
+           depthDataOutput.connection(with: .depthData) != nil {
+            outputs.append(depthDataOutput)
+        }
+        let outputSync = AVCaptureDataOutputSynchronizer(dataOutputs: outputs)
+        outputSync.setDelegate(self, queue: self.sessionQueue)
+        self.outputSync = outputSync
     }
     
     @IBOutlet private weak var cameraButton: UIButton!
@@ -621,7 +585,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
 
             DispatchQueue.main.async {
 //                self.cameraButton.isEnabled = isSessionRunning && self.videoDeviceDiscoverySession.uniqueDevicePositionsCount > 1
-                self.recordButton.isEnabled = isSessionRunning && self.movieOut != nil
+                self.recordButton.isEnabled = isSessionRunning
             }
         }
         keyValueObservations.append(keyValueObservation)
@@ -780,7 +744,9 @@ extension CaptureViewController {
                 self.chosenCamera = camera
                 UserDefaults.standard.set(camera.name, forKey: "the-camera")
             }
-            self.selectCamera()
+            self.sessionQueue.async {
+                _ = self.selectCamera()
+            }
         }
         
         var options = [UIAction]()
@@ -811,58 +777,59 @@ extension CaptureViewController {
         }
     }
     
-    private func selectCamera() {
+    private func selectCamera() -> SessionSetupResult {
         self.selectedMovieMode10BitDeviceFormat = nil
-        sessionQueue.async {
-            guard let chosenCamera = self.chosenCamera else { return }
-            let videoDeviceInput: AVCaptureDeviceInput!
-            do {
-                videoDeviceInput = try CaptureHelper.getCaptureDeviceInput(cam: chosenCamera)
-            } catch {
-                print("Cannot find camera: \(error.localizedDescription)")
-                return
-            }
-            let currentVideoDevice = self.videoDeviceInput.device
-            self.session.beginConfiguration()
+
+        guard let chosenCamera = self.chosenCamera else { return .configurationFailed }
+        let videoDeviceInput: AVCaptureDeviceInput!
+        do {
+            videoDeviceInput = try CaptureHelper.getCaptureDeviceInput(cam: chosenCamera)
+        } catch {
+            print("Cannot find camera: \(error.localizedDescription)")
+            return .configurationFailed
+        }
+        session.beginConfiguration()
+        if self.videoDeviceInput != nil {
+            NotificationCenter.default.removeObserver(self, name: .AVCaptureDeviceSubjectAreaDidChange, object: self.videoDeviceInput.device)
             self.session.removeInput(self.videoDeviceInput)
-            
-            if self.session.canAddInput(videoDeviceInput) {
-                NotificationCenter.default.removeObserver(self, name: .AVCaptureDeviceSubjectAreaDidChange, object: currentVideoDevice)
-                NotificationCenter.default.addObserver(self, selector: #selector(self.subjectAreaDidChange), name: .AVCaptureDeviceSubjectAreaDidChange, object: videoDeviceInput.device)
-                self.session.addInput(videoDeviceInput)
-                self.videoDeviceInput = videoDeviceInput
-            } else {
-                self.session.addInput(self.videoDeviceInput)
+        }
+
+        if self.session.canAddInput(videoDeviceInput) {
+            NotificationCenter.default.addObserver(self, selector: #selector(self.subjectAreaDidChange), name: .AVCaptureDeviceSubjectAreaDidChange, object: videoDeviceInput.device)
+            self.session.addInput(videoDeviceInput)
+            self.videoDeviceInput = videoDeviceInput
+        } else {
+            self.session.addInput(self.videoDeviceInput)
+        }
+        if let connection = self.videoOutput?.connection(with: .video) {
+            self.selectedMovieMode10BitDeviceFormat = self.tenBitVariantOfFormat(activeFormat: self.videoDeviceInput.device.activeFormat)
+
+            // TODO: HDR here?
+
+            if connection.isVideoStabilizationSupported {
+                connection.preferredVideoStabilizationMode = .auto
             }
-            if let connection = self.videoOutput?.connection(with: .video) {
-                self.selectedMovieMode10BitDeviceFormat = self.tenBitVariantOfFormat(activeFormat: self.videoDeviceInput.device.activeFormat)
+        }
 
-                // TODO: HDR here?
+        self.setupOutput(depthEnabled: chosenCamera.depthDataFormat != nil)
+        session.commitConfiguration()
+        self.setupSyncedOutputs(depthEnabled: chosenCamera.depthDataFormat != nil)
 
-                if connection.isVideoStabilizationSupported {
-                    connection.preferredVideoStabilizationMode = .auto
-                }
-            }
-            self.session.commitConfiguration()
+        DispatchQueue.main.async {
+            self.recordButton.isEnabled = true
 
-            self.setupOutput(depthEnabled: chosenCamera.depthDataFormat != nil)
-            if let depthDataFormat = chosenCamera.depthDataFormat {
-                self.depth2grayscale.prepare(with: depthDataFormat.formatDescription, outputRetainedBufferCountHint: 10)
-            }
+            if let connection = self.previewView.videoPreviewLayer.connection {
+                (self.transform, self.reverseTransform) = self.getCaptureTransform(orientation: connection.videoOrientation, isMirrored: connection.isVideoMirrored, videoSettings: self.videoOutput.recommendedVideoSettingsForAssetWriter(writingTo: .mov)!)
+                self.isMirrored = connection.isVideoMirrored
+                self.videoOutput?.connection(with: .video)?.videoOrientation = connection.videoOrientation
 
-            DispatchQueue.main.async {
-                if let connection = self.previewView.videoPreviewLayer.connection {
-                    (self.transform, self.reverseTransform) = self.getCaptureTransform(orientation: connection.videoOrientation, isMirrored: connection.isVideoMirrored, videoSettings: self.videoOutput.recommendedVideoSettingsForAssetWriter(writingTo: .mov)!)
-                    self.isMirrored = connection.isVideoMirrored
-                    self.videoOutput?.connection(with: .video)?.videoOrientation = connection.videoOrientation
-
-                    if let depthDataConnection = self.depthDataOutput?.connection(with: .depthData) {
-                        depthDataConnection.videoOrientation = connection.videoOrientation
-                        depthDataConnection.isVideoMirrored = connection.isVideoMirrored
-                    }
+                if let depthDataConnection = self.depthDataOutput?.connection(with: .depthData) {
+                    depthDataConnection.videoOrientation = connection.videoOrientation
+                    depthDataConnection.isVideoMirrored = connection.isVideoMirrored
                 }
             }
         }
+        return .success
     }
 }
 
@@ -1171,21 +1138,25 @@ extension CaptureViewController {
         scene.rootNode.addChildNode(cameraNode)
 
         // place the camera
-        cameraNode.position = SCNVector3(x: 0, y: 0, z: 1)
+        cameraNode.position = SCNVector3(x: 0, y: 0, z: 0)
+        cameraNode.camera!.zNear = 0
+        cameraNode.camera!.automaticallyAdjustsZRange = true
 
+        /*
         // create and add a light to the scene
         let lightNode = SCNNode()
         lightNode.light = SCNLight()
         lightNode.light!.type = .omni
         lightNode.position = SCNVector3(x: 0, y: 10, z: 10)
-//        scene.rootNode.addChildNode(lightNode)
+        scene.rootNode.addChildNode(lightNode)
 
         // create and add an ambient light to the scene
         let ambientLightNode = SCNNode()
         ambientLightNode.light = SCNLight()
         ambientLightNode.light!.type = .ambient
         ambientLightNode.light!.color = UIColor.white
-//        scene.rootNode.addChildNode(ambientLightNode)
+        scene.rootNode.addChildNode(ambientLightNode)
+        */
 
         let axes = PointCloud.buildAxes()
         scene.rootNode.addChildNode(axes)
