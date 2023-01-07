@@ -264,6 +264,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
 
         DispatchQueue.main.async {
             self.poser1.updateModel()
+            self.poser1.logFunc = self.log
             do {
                 self.poser2 = try PoseNet()
                 self.deepLab = DeepLab()
@@ -357,7 +358,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         x += self.playSpeedMenu.frame.size.width
 
         // center buttons
-        var width = CGFloat(buttonWidth) * 4 / 3
+        let width = CGFloat(buttonWidth) * 4 / 3
         x = rect.minX + (rect.width - width * 3) / 2
         self.frameBackButton.frame = CGRect(x: x, y: y, width: width, height: CGFloat(buttonHeight))
         x += self.frameBackButton.frame.size.width
@@ -857,15 +858,16 @@ extension PlayerViewController {
 
 extension PlayerViewController {
     func log(_ msg: String) {
+        let max = 20000
         DispatchQueue.main.async {
             if let logView = self.textLogView {
                 logView.text += msg + "\n"
                 let len = logView.text.count
-                logView.scrollRangeToVisible(NSMakeRange(len - 1, 0))
-                if len > 2000 {
-                    let startIndex = logView.text.index(logView.text.startIndex, offsetBy: len-2000)
+                if len > max  {
+                    let startIndex = logView.text.index(logView.text.startIndex, offsetBy: len-max)
                     logView.text = String(logView.text[startIndex...])
                 }
+                logView.scrollRangeToVisible(NSMakeRange(logView.text.count - 1, 0))
             }
         }
         print(msg)

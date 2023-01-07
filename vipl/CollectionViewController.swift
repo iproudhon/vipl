@@ -10,6 +10,7 @@ import MobileCoreServices
 import AVKit
 import UIKit
 import PhotosUI
+import os
 
 // TODO: this is not working properly, need to remove dirUpdated() method below
 class FolderMonitor {
@@ -262,6 +263,10 @@ extension CollectionViewController {
                 let uti = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, ext as CFString, nil)
                 if UTTypeConformsTo((uti?.takeRetainedValue())!, kUTTypeMovie) {
                     let (creationDate, dimensions) = CollectionViewController.getCreationDateAndDimensions(url: url)
+                    if creationDate == nil {
+                        os_log("invalid movie file: \(url.path)")
+                        continue
+                    }
                     let swingItem = SwingItem(url: url, creationDate: creationDate, meta: "", dimensions: dimensions, thumbnail: nil)
                     swingItems.append(swingItem)
                 }

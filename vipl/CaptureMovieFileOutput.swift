@@ -50,6 +50,14 @@ class CaptureMovieFileOuptut {
             writer.add(audioWriterInput)
         }
 
+        /*
+        let depthWriterInput = AVAssetWriterInput(mediaType: .depthData, outputSettings: nil)
+        depthWriterInput.expectsMediaDataInRealTime = true
+        if writer.canAdd(depthWriterInput) {
+            writer.add(depthWriterInput)
+        }
+         */
+
         var metadata = [AVMutableMetadataItem]()
         var item = AVMutableMetadataItem()
         item.keySpace = .common
@@ -107,6 +115,7 @@ class CaptureMovieFileOuptut {
         self.writer = writer
         self.videoWriterInput = videoWriterInput
         self.audioWriterInput = audioWriterInput
+        // self.depthWriterInput = depthWriterInput
         self.startTime = CMTime.zero
         self.latestTime = CMTime.zero
 
@@ -141,8 +150,8 @@ class CaptureMovieFileOuptut {
         self.isRecording = false
         self.videoWriterInput?.markAsFinished()
         self.audioWriterInput?.markAsFinished()
-        self.depthWriterInput?.markAsFinished()
-        self.metadataWriterInput?.markAsFinished()
+        // self.depthWriterInput?.markAsFinished()
+        // self.metadataWriterInput?.markAsFinished()
         writer.finishWriting { [weak self] in
             self?.nullify()
             handler()
@@ -167,9 +176,10 @@ class CaptureMovieFileOuptut {
             if self.audioWriterInput?.isReadyForMoreMediaData ?? false {
                 self.audioWriterInput?.append(sampleBuffer)
             }
-            break
         case .depthData:
-            break
+            if self.depthWriterInput?.isReadyForMoreMediaData ?? false {
+                self.depthWriterInput?.append(sampleBuffer)
+            }
         case .metadata:
             break
         default:

@@ -29,7 +29,7 @@
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                     </imageView>
                                     <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" showsMenuAsPrimaryAction="YES" contentHorizontalAlignment="left" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" changesSelectionAsPrimaryAction="YES" translatesAutoresizingMaskIntoConstraints="NO" id="r0v-Wx-bif">
-                                        <rect key="frame" x="8" y="17" width="317" height="38"/>
+                                        <rect key="frame" x="48" y="17" width="312" height="38"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                         <menu key="menu" id="ALy-ZK-g9X">
                                             <children>
@@ -54,25 +54,41 @@
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Resume"/>
                                     </button>
-                                    <label hidden="YES" opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="00:00" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Kbf-YX-Knw">
-                                        <rect key="frame" x="158" y="46" width="98" height="21"/>
-                                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" widthSizable="YES" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                        <fontDescription key="fontDescription" type="system" pointSize="24"/>
-                                        <color key="textColor" systemColor="systemRedColor"/>
-                                        <nil key="highlightedColor"/>
-                                    </label>
                                     <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="fPN-DX-cAc">
-                                        <rect key="frame" x="374" y="2" width="40" height="40"/>
+                                        <rect key="frame" x="0.0" y="3" width="40" height="40"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="20"/>
                                         <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
                                         <state key="normal">
-                                            <imageReference key="backgroundImage" image="xmark" catalog="system" symbolScale="default" variableValue="0.0"/>
+                                            <imageReference key="backgroundImage" image="chevron.left" catalog="system" symbolScale="default" variableValue="0.0"/>
                                         </state>
                                         <connections>
                                             <action selector="dismiss:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="L2e-Ge-mQo"/>
                                         </connections>
                                     </button>
+                                    <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" showsMenuAsPrimaryAction="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="J9D-Xa-5eS">
+                                        <rect key="frame" x="368" y="1" width="40" height="40"/>
+                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                        <menu key="menu" id="dsx-ui-zyN">
+                                            <children>
+                                                <command title="Item 1" id="dIL-tw-6QU"/>
+                                                <command title="Item 2" id="Kbr-ng-mfV"/>
+                                            </children>
+                                        </menu>
+                                        <state key="normal" backgroundImage="ellipsis.circle" catalog="system"/>
+                                    </button>
+                                    <sceneKitView opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" allowsCameraControl="YES" translatesAutoresizingMaskIntoConstraints="NO" id="tdM-R8-ntZ">
+                                        <rect key="frame" x="218" y="63" width="196" height="265"/>
+                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                        <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                    </sceneKitView>
+                                    <label hidden="YES" opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="00:00" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Kbf-YX-Knw">
+                                        <rect key="frame" x="158" y="63" width="98" height="21"/>
+                                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" widthSizable="YES" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                        <fontDescription key="fontDescription" type="system" pointSize="24"/>
+                                        <color key="textColor" systemColor="systemRedColor"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
                                 </subviews>
                                 <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                             </view>
@@ -126,10 +142,12 @@
                         <outlet property="capturedVideoViewImg" destination="k8p-Na-fUM" id="jq0-4Z-hPM"/>
                         <outlet property="dismissCapturedVideoButton" destination="hjp-wL-BOL" id="abb-h3-IKW"/>
                         <outlet property="durationLabel" destination="Kbf-YX-Knw" id="WUw-4c-lAn"/>
+                        <outlet property="menuButton" destination="J9D-Xa-5eS" id="vhu-c2-xys"/>
                         <outlet property="overlayView" destination="raI-eP-xjE" id="mZL-fX-68U"/>
                         <outlet property="previewView" destination="xLE-CY-cd6" id="SV7-8o-b6n"/>
                         <outlet property="recordButton" destination="egK-NP-nUa" id="DO2-7z-Igm"/>
                         <outlet property="resumeButton" destination="AkR-QD-EM5" id="v7o-jP-Dxz"/>
+                        <outlet property="sceneView" destination="tdM-R8-ntZ" id="ZAB-Sx-SJa"/>
                         <outlet property="textLogView" destination="qeH-Kc-C6X" id="PeE-tV-PaV"/>
                         <outlet property="xButton" destination="fPN-DX-cAc" id="yie-wh-GgF"/>
                     </connections>
@@ -140,6 +158,8 @@
         </scene>
     </scenes>
     <resources>
+        <image name="chevron.left" catalog="system" width="97" height="128"/>
+        <image name="ellipsis.circle" catalog="system" width="128" height="123"/>
         <image name="record.circle" catalog="system" width="128" height="123"/>
         <image name="xmark" catalog="system" width="128" height="113"/>
         <namedColor name="AccentColor">

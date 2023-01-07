@@ -63,7 +63,7 @@ extension AVAsset {
     }
 
     func info() -> String {
-        var info = [String:String]()
+        var info = [String:Any]()
         let orientation: UIDeviceOrientation
         (orientation, _, _, _) = self.videoOrientation()
         switch orientation {
@@ -96,6 +96,12 @@ extension AVAsset {
                 break
             }
         }
+        var tracksInfo = [String]()
+        for track in self.tracks {
+            tracksInfo.append("media-type:\(track.mediaType), dimensions:\(track.naturalSize)")
+        }
+        info["tracks"] = tracksInfo
+
         if let data = try? JSONSerialization.data(withJSONObject: info, options: [JSONSerialization.WritingOptions.prettyPrinted]),
            let string = String(data: data, encoding: String.Encoding.utf8) {
             return string

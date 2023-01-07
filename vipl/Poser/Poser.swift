@@ -19,6 +19,7 @@ class Poser {
     static var movenetLightning: MoveNet?
 
     private var poseEstimator: PoseEstimator?
+    var logFunc: ((_ msg: String) -> Void)?
 
     let queue = DispatchQueue(label: "poser.queue")
 
@@ -105,7 +106,13 @@ class Poser {
                     targetView.pushPose(pose: result, snap: nil, time: time)
                 }
             }
-
+            if let log = self.logFunc {
+                var msg = String(format: "%.1f ", result.score)
+                for p in result.keyPoints {
+                    msg += "\(p.bodyPart):" + String(format: "%.1f", p.score) + " "
+                }
+                log("%%%: " + msg)
+            }
             DispatchQueue.main.async {
                 targetView.draw(size: outPixelBuffer.size)
             }

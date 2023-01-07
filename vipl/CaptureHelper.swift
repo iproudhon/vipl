@@ -17,18 +17,23 @@ class CaptureCameraType {
     var format: AVCaptureDevice.Format
     var frameRate: Float64
     var dimensions: CMVideoDimensions
+    var depthDataFormat: AVCaptureDevice.Format?
 
-    init(name: String, deviceType: AVCaptureDevice.DeviceType, position: AVCaptureDevice.Position, format: AVCaptureDevice.Format, frameRate: Float64, dimensions: CMVideoDimensions) {
+    init(name: String, deviceType: AVCaptureDevice.DeviceType, position: AVCaptureDevice.Position, format: AVCaptureDevice.Format, frameRate: Float64, dimensions: CMVideoDimensions, depthDataFormat: AVCaptureDevice.Format?) {
         self.name = name
         self.deviceType = deviceType
         self.position = position
         self.format = format
         self.frameRate = frameRate
         self.dimensions = dimensions
+        self.depthDataFormat = depthDataFormat
     }
 }
 
 class CaptureHelper {
+    // max dimension: 320, 640, 1280, 1920
+    static let maxDepthWidth = 640
+
     static func listCameras() -> [String:CaptureCameraType]? {
         var session: AVCaptureDevice.DiscoverySession?
         if #available(iOS 15.4, *) {
@@ -37,11 +42,30 @@ class CaptureHelper {
             session = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera, .builtInUltraWideCamera, .builtInTelephotoCamera, .builtInDualCamera, .builtInDualWideCamera, .builtInTripleCamera, .builtInTrueDepthCamera], mediaType: .video, position: .unspecified)
         }
 
+        func getDepthDimensionsAndRate(format: AVCaptureDevice.Format) -> (AVCaptureDevice.Format, CMVideoDimensions, Float64) {
+            var depthFormat = format
+            var depthDims = CMVideoDimensions(width: 0, height: 0), depthRate: Float64 = 0
+            for i in format.supportedDepthDataFormats.filter({ depthFormat in
+                return CMFormatDescriptionGetMediaSubType(depthFormat.formatDescription) == kCVPixelFormatType_DepthFloat32
+            }) {
+                let dims = i.formatDescription.dimensions
+                for range in i.videoSupportedFrameRateRanges {
+                    if dims.width >= depthDims.width && range.maxFrameRate >= depthRate {
+                        depthFormat = i
+                        depthDims = dims
+                        depthRate = range.maxFrameRate
+                    }
+                }
+            }
+            return (depthFormat, depthDims, depthRate)
+        }
+
         var choices: [String:CaptureCameraType] = [:]
         guard let session = session else { return nil }
         for device in session.devices {
             // frameRate -> format
             var rate2format: [Float64:AVCaptureDevice.Format] = [:]
+            var rate2depthFormat: [Float64:AVCaptureDevice.Format] = [:]
             for format in device.formats {
                 let dims = format.formatDescription.dimensions
                 for range in format.videoSupportedFrameRateRanges {
@@ -54,13 +78,28 @@ class CaptureHelper {
                         rate2format[range.maxFrameRate] = format
                     }
                 }
+
+                if dims.width > maxDepthWidth {
+                    continue
+                }
+                let (_, depthDims, depthRate) = getDepthDimensionsAndRate(format: format)
+                if depthDims.width > 0 && depthRate > 0 {
+                    rate2depthFormat[depthRate] = format
+                }
             }
 
             for key in rate2format.keys.sorted() {
                 guard let format = rate2format[key] as AVCaptureDevice.Format? else { continue }
                 let dims = format.formatDescription.dimensions
                 let name = "\(device.localizedName) \(dims.width)x\(dims.height) \(key) fps"
-                choices[name] = CaptureCameraType(name: name, deviceType: device.deviceType, position: device.position, format: format, frameRate: key, dimensions: dims)
+                choices[name] = CaptureCameraType(name: name, deviceType: device.deviceType, position: device.position, format: format, frameRate: key, dimensions: dims, depthDataFormat: nil)
+            }
+            for key in rate2depthFormat.keys.sorted() {
+                guard let format = rate2depthFormat[key] as AVCaptureDevice.Format? else { continue }
+                let dims = format.formatDescription.dimensions
+                let name = "\(device.localizedName) Depthx\(dims.width)x\(dims.height) \(key) fps"
+                let (depthFormat, _, _) = getDepthDimensionsAndRate(format: format)
+                choices[name] = CaptureCameraType(name: name, deviceType: device.deviceType, position: device.position, format: format, frameRate: key, dimensions: dims, depthDataFormat: depthFormat)
             }
         }
         return choices

@@ -77,6 +77,13 @@
 		85C8C6AE295FD38400012236 /* CIImage+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C8C6AD295FD38400012236 /* CIImage+Extension.swift */; };
 		85DE2CB52947BF8300BBFCA8 /* PlayerView.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 85DE2CB42947BF8300BBFCA8 /* PlayerView.storyboard */; };
 		85DE2CBB2948496700BBFCA8 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85DE2CBA2948496700BBFCA8 /* PlayerView.swift */; };
+		85EB33E92968E8CD00604B6C /* DepthToGrayscale.metal in Sources */ = {isa = PBXBuildFile; fileRef = 85EB33E82968E8CD00604B6C /* DepthToGrayscale.metal */; };
+		85EB33EB2968E8F600604B6C /* DepthToGrayscaleConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85EB33EA2968E8F600604B6C /* DepthToGrayscaleConverter.swift */; };
+		85EB33ED2968E92D00604B6C /* FilterRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85EB33EC2968E92D00604B6C /* FilterRenderer.swift */; };
+		85EB33F12968E97B00604B6C /* minMaxFromBuffer.m in Sources */ = {isa = PBXBuildFile; fileRef = 85EB33F02968E97B00604B6C /* minMaxFromBuffer.m */; };
+		85EB33F32968F85C00604B6C /* AVDepthData+Utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85EB33F22968F85C00604B6C /* AVDepthData+Utils.swift */; };
+		85EB33F629690F5D00604B6C /* PointCloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85EB33F529690F5D00604B6C /* PointCloud.swift */; };
+		85EB33F829696B2A00604B6C /* CVPixelBuffer+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85EB33F729696B2A00604B6C /* CVPixelBuffer+Extension.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -183,6 +190,15 @@
 		85C8C6AD295FD38400012236 /* CIImage+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CIImage+Extension.swift"; sourceTree = "<group>"; };
 		85DE2CB42947BF8300BBFCA8 /* PlayerView.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = PlayerView.storyboard; sourceTree = "<group>"; };
 		85DE2CBA2948496700BBFCA8 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
+		85EB33E82968E8CD00604B6C /* DepthToGrayscale.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; path = DepthToGrayscale.metal; sourceTree = "<group>"; };
+		85EB33EA2968E8F600604B6C /* DepthToGrayscaleConverter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DepthToGrayscaleConverter.swift; sourceTree = "<group>"; };
+		85EB33EC2968E92D00604B6C /* FilterRenderer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FilterRenderer.swift; sourceTree = "<group>"; };
+		85EB33EE2968E97A00604B6C /* vipl-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "vipl-Bridging-Header.h"; sourceTree = "<group>"; };
+		85EB33EF2968E97B00604B6C /* minMaxFromBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = minMaxFromBuffer.h; sourceTree = "<group>"; };
+		85EB33F02968E97B00604B6C /* minMaxFromBuffer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = minMaxFromBuffer.m; sourceTree = "<group>"; };
+		85EB33F22968F85C00604B6C /* AVDepthData+Utils.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "AVDepthData+Utils.swift"; sourceTree = "<group>"; };
+		85EB33F529690F5D00604B6C /* PointCloud.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloud.swift; sourceTree = "<group>"; };
+		85EB33F729696B2A00604B6C /* CVPixelBuffer+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CVPixelBuffer+Extension.swift"; sourceTree = "<group>"; };
 		B3E4F6BF0B19270CB2690F38 /* Pods-vipl.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-vipl.debug.xcconfig"; path = "Target Support Files/Pods-vipl/Pods-vipl.debug.xcconfig"; sourceTree = "<group>"; };
 		E8397AA763B148BFCC732764 /* Pods-vipl.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-vipl.release.xcconfig"; path = "Target Support Files/Pods-vipl/Pods-vipl.release.xcconfig"; sourceTree = "<group>"; };
 		F716EB324AD3784008B18843 /* Pods_vipl.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_vipl.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -273,8 +289,15 @@
 		85A501E12962720D005F2382 /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				85EB33EC2968E92D00604B6C /* FilterRenderer.swift */,
+				85EB33EA2968E8F600604B6C /* DepthToGrayscaleConverter.swift */,
 				85A501E229627223005F2382 /* Cache.swift */,
 				85A501E6296536A0005F2382 /* AVAsset+Extension.swift */,
+				85EB33F22968F85C00604B6C /* AVDepthData+Utils.swift */,
+				85EB33F729696B2A00604B6C /* CVPixelBuffer+Extension.swift */,
+				85EB33EF2968E97B00604B6C /* minMaxFromBuffer.h */,
+				85EB33F02968E97B00604B6C /* minMaxFromBuffer.m */,
+				85EB33EE2968E97A00604B6C /* vipl-Bridging-Header.h */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -304,7 +327,7 @@
 		85AC1B07293EBAEE00CA4556 /* vipl */ = {
 			isa = PBXGroup;
 			children = (
-				85A501E12962720D005F2382 /* Utils */,
+				85EB33F429690F4C00604B6C /* PointCloud */,
 				85AC1B7A2947BECA00CA4556 /* Views */,
 				85AC1B08293EBAEE00CA4556 /* AppDelegate.swift */,
 				85AC1B0A293EBAEE00CA4556 /* SceneDelegate.swift */,
@@ -323,6 +346,8 @@
 				85C8C655295FACF700012236 /* DeepLab */,
 				851040DF295C0C1400320EC7 /* Poser */,
 				85104100295F5F3A00320EC7 /* PoseNet */,
+				85EB33E72968E88100604B6C /* Shaders */,
+				85A501E12962720D005F2382 /* Utils */,
 				85C8C68A295FCEAA00012236 /* CoreMLHelpers */,
 			);
 			path = vipl;
@@ -389,6 +414,22 @@
 				85C8C692295FCECD00012236 /* UIImage+RawBytes.swift */,
 			);
 			path = CoreMLHelpers;
+			sourceTree = "<group>";
+		};
+		85EB33E72968E88100604B6C /* Shaders */ = {
+			isa = PBXGroup;
+			children = (
+				85EB33E82968E8CD00604B6C /* DepthToGrayscale.metal */,
+			);
+			path = Shaders;
+			sourceTree = "<group>";
+		};
+		85EB33F429690F4C00604B6C /* PointCloud */ = {
+			isa = PBXGroup;
+			children = (
+				85EB33F529690F5D00604B6C /* PointCloud.swift */,
+			);
+			path = PointCloud;
 			sourceTree = "<group>";
 		};
 		90261234AD25A732971EC154 /* Pods */ = {
@@ -470,6 +511,7 @@
 				TargetAttributes = {
 					85AC1B04293EBAEE00CA4556 = {
 						CreatedOnToolsVersion = 14.1;
+						LastSwiftMigration = 1420;
 					};
 					85AC1B1A293EBAEF00CA4556 = {
 						CreatedOnToolsVersion = 14.1;
@@ -572,24 +614,29 @@
 				851040D829540F8E00320EC7 /* AVPlayerController.swift in Sources */,
 				85C8C64B295F76F300012236 /* CGImage+Extension.swift in Sources */,
 				85C8C6A5295FCECD00012236 /* Math.swift in Sources */,
+				85EB33ED2968E92D00604B6C /* FilterRenderer.swift in Sources */,
 				85C8C6AA295FCECD00012236 /* MLMultiArray+Image.swift in Sources */,
 				85169D51294AAE71007C081F /* CaptureViewController.swift in Sources */,
 				85C8C6A7295FCECD00012236 /* CVPixelBuffer+Create.swift in Sources */,
 				851040DC29551E1900320EC7 /* CollectionViewController.swift in Sources */,
 				85C8C6A8295FCECD00012236 /* UIImage+CVPixelBuffer.swift in Sources */,
+				85EB33F32968F85C00604B6C /* AVDepthData+Utils.swift in Sources */,
 				851040F5295C1B4200320EC7 /* CVPixelBuffer+TFLite.swift in Sources */,
 				85C8C69C295FCECD00012236 /* CGImage+RawBytes.swift in Sources */,
 				851040ED295C1B2800320EC7 /* MoveNet.swift in Sources */,
 				85C8C6AB295FCECD00012236 /* CVPixelBuffer+Rotate.swift in Sources */,
 				85C8C69F295FCECD00012236 /* Array+Extensions.swift in Sources */,
 				85C8C654295F906400012236 /* PoseNetMobileNet075S16FP16.mlmodel in Sources */,
+				85EB33F829696B2A00604B6C /* CVPixelBuffer+Extension.swift in Sources */,
 				85C8C650295F76F300012236 /* Joint.swift in Sources */,
 				85C8C64C295F76F300012236 /* PoseBuilder+Single.swift in Sources */,
 				85C8C6A2295FCECD00012236 /* CoreML+Combine.swift in Sources */,
 				85C8C69D295FCECD00012236 /* MLModel+Images.swift in Sources */,
 				851040DE295637B200320EC7 /* CaptureHelper.swift in Sources */,
 				85AC1B772947BBB900CA4556 /* PlayerViewController.swift in Sources */,
+				85EB33F12968E97B00604B6C /* minMaxFromBuffer.m in Sources */,
 				851040F3295C1B4200320EC7 /* CGSize+TFLite.swift in Sources */,
+				85EB33E92968E8CD00604B6C /* DepthToGrayscale.metal in Sources */,
 				851040EE295C1B2800320EC7 /* PoseConfig.swift in Sources */,
 				85C8C6AE295FD38400012236 /* CIImage+Extension.swift in Sources */,
 				85A501E52963E383005F2382 /* CaptureMovieFileOutput.swift in Sources */,
@@ -600,8 +647,10 @@
 				85A501E329627223005F2382 /* Cache.swift in Sources */,
 				851040EC295C1B2800320EC7 /* PoseData.swift in Sources */,
 				85C8C6A3295FCECD00012236 /* UIImage+RawBytes.swift in Sources */,
+				85EB33F629690F5D00604B6C /* PointCloud.swift in Sources */,
 				85C8C659295FAD6C00012236 /* DeepLab.swift in Sources */,
 				85DE2CBB2948496700BBFCA8 /* PlayerView.swift in Sources */,
+				85EB33EB2968E8F600604B6C /* DepthToGrayscaleConverter.swift in Sources */,
 				851040EB295C1B2800320EC7 /* PoseNetTF.swift in Sources */,
 				85C8C6A0295FCECD00012236 /* CGImagePropertyOrientation.swift in Sources */,
 				85C8C69E295FCECD00012236 /* CVPixelBuffer+Resize.swift in Sources */,
@@ -797,6 +846,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 46PJ3YDAKX;
@@ -821,6 +871,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.charlanxcc.vipl;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "vipl/Utils/vipl-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -833,6 +885,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 46PJ3YDAKX;
@@ -857,6 +910,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.charlanxcc.vipl;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "vipl/Utils/vipl-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
