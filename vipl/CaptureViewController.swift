@@ -780,8 +780,8 @@ extension CaptureViewController {
             self.textLogView.isHidden = !self.textLogView.isHidden
             self.setupMainMenu()
         }))
-#if false
         var str: String
+#if false
         switch self.sceneViewMode {
         case 0:
             str = "Show Scene View"
