@@ -240,9 +240,11 @@ extension CollectionViewController {
     func dirUpdated() -> Bool {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let savedTime = self.dirModifiedTime ?? Date(timeIntervalSince1970: 0)
-        let attrs = try? FileManager.default.attributesOfItem(atPath: dir.path)
-        let fileTime = attrs?[FileAttributeKey.modificationDate] as? Date ?? Date(timeIntervalSince1970: 0)
-        return fileTime > savedTime
+        var (_, fileTime) = FileSystemHelper.fileTimes(url: dir)
+        if fileTime == nil {
+            fileTime = Date(timeIntervalSince1970: 0)
+        }
+        return fileTime! > savedTime
     }
 
     func monitorDir() {
@@ -278,9 +280,11 @@ extension CollectionViewController {
             swingItems.sort {
                 $0.creationDate! > $1.creationDate!
             }
-            let attrs = try FileManager.default.attributesOfItem(atPath: dir.path)
-            let modifiedtime = attrs[FileAttributeKey.modificationDate] as? Date ?? Date(timeIntervalSince1970: 0)
-            return (swingItems, modifiedtime)
+            var (_, modifiedTime) = FileSystemHelper.fileTimes(url: dir)
+            if modifiedTime == nil {
+                modifiedTime = Date(timeIntervalSince1970: 0)
+            }
+            return (swingItems, modifiedTime!)
         } catch {
             print("Directory listing failed: \(error)")
             return ([], Date(timeIntervalSince1970: 0))
@@ -341,10 +345,8 @@ extension CollectionViewController {
             if !r.open(url.path, forWrite: false) {
                 return
             }
-            if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey:Any],
-               let creationDate = attrs[.creationDate] as? Date {
-                item.creationDate = creationDate
-            }
+            let (creationDate, _) = FileSystemHelper.fileTimes(url: url)
+            item.creationDate = creationDate
             item.duration = CMTime(seconds: r.recordedDuration(), preferredTimescale: 600)
             item.description = url.lastPathComponent
 

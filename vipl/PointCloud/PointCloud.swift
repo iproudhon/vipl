@@ -522,6 +522,8 @@ end_header
 }
 
 class PointCloud2 {
+    public static var interlace = 1
+
     var vtxs: [PointCloudVertex]?
 
     var width: Int = 0
@@ -538,23 +540,30 @@ class PointCloud2 {
               let colors = self.colors else { return }
 
         var vtxs = [PointCloudVertex]()
-        for ix in 0..<width*height {
-            var z = depths[ix]
-            if z.isNaN {
-                continue
-            }
-            var u = Float(ix % width), v = Float(ix / width)
-            u = Float(width) - u
-            z = -z
-            let pt = simd_float4((u - cx) * z / fx, (v - cy) * z / fy, z, 1.0)
-            let cix = ix * 4
-            let r = colors[cix+0], g = colors[cix+1], b = colors[cix+2]
-            vtxs.append(PointCloudVertex(x: pt[0], y: pt[1], z: pt[2], r: Float(r) / 255.0, g: Float(g) / 255.0, b: Float(b) / 255.0))
-        }
+        for y in 0..<height {
+            for x in 0..<width {
+                let ix = y * width + x
+                if x % PointCloud2.interlace != 0 || y % PointCloud2.interlace != 0 {
+                    continue
+                }
 
-        self.depths = nil
-        self.colors = nil
-        self.vtxs = vtxs
+                var z = depths[ix]
+                if z.isNaN {
+                    continue
+                }
+                var u = Float(x), v = Float(y)
+                u = Float(width) - u
+                z = -z
+                let pt = simd_float4((u - cx) * z / fx, (v - cy) * z / fy, z, 1.0)
+                let cix = ix * 4
+                let r = colors[cix+0], g = colors[cix+1], b = colors[cix+2]
+                vtxs.append(PointCloudVertex(x: pt[0], y: pt[1], z: pt[2], r: Float(r) / 255.0, g: Float(g) / 255.0, b: Float(b) / 255.0))
+            }
+
+            self.depths = nil
+            self.colors = nil
+            self.vtxs = vtxs
+        }
     }
 
     public func toSCNNode() -> SCNNode? {

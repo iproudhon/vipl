@@ -295,18 +295,23 @@ class PointCloudPlayer: NSObject {
         self.frame = 0
         self.count = Int(asset?.frameCount() ?? 0)
 
-        if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey:Any],
-           let creationDate = attrs[.creationDate] as? Date {
-            self.creationDate = creationDate
+        (self.creationDate, _) = FileSystemHelper.fileTimes(url: url)
+
+        if self.count < 120 {
+            PointCloud2.interlace = 1
+        } else if self.count < 300 {
+            PointCloud2.interlace = 2
+        } else {
+            PointCloud2.interlace = 4
         }
     }
 
     func loadPointClouds(log: ((String) -> ())? = nil) {
         var done = 0
         let startTime = Date()
-        DispatchQueue.global().async {
+        DispatchQueue.global(qos: .utility).async {
             for ix in 0..<self.count {
-                DispatchQueue.global().async {
+                DispatchQueue.global(qos: .background).async {
                     let oix = self.frame
                     objc_sync_enter(self)
                     if (self.asset?.seek(Int32(ix), whence: 0) ?? -1) != -1 {
@@ -358,17 +363,13 @@ class PointCloudPlayer: NSObject {
         return true
     }
 
-    func seek(time: CMTime) -> Bool {
-        guard let frameTimes = frameTimes,
-              count > 0 else { return false }
-        var l, m, h: Int
-        l = 0
-        h = count - 1
-        m = (l + h) / 2
+    func timeToFrame(time: CMTime) -> Int {
+        guard let frameTimes = frameTimes else { return 0 }
+        var l = 0, h = count - 1, m = 0
         while l <= h {
             m = (l + h) / 2
             if time.seconds == frameTimes[m] {
-                return seek(frame: m)
+                return m
             } else if time.seconds < frameTimes[m] {
                 h = m - 1
             } else {
@@ -376,12 +377,50 @@ class PointCloudPlayer: NSObject {
             }
         }
         if frameTimes[m] < time.seconds {
-            return seek(frame: m)
-        } else if m > 0 && frameTimes[m-1] < time.seconds {
-            return seek(frame: m-1)
-        } else if m < count - 1 && frameTimes[m+1] < time.seconds {
-            return seek(frame: m+1)
+            return m
+        } else if m > 0 {
+            return m - 1
+        } else {
+            return m
         }
-        return false
+    }
+
+    func seek(time: CMTime) -> Bool {
+        return seek(frame: timeToFrame(time: time))
+    }
+
+    public func export(to: URL, startTime: CMTime, endTime: CMTime) -> Bool {
+        let fromAsset = PointCloudRecorder(), toAsset = PointCloudRecorder()
+        defer { fromAsset.close(); toAsset.close() }
+        guard fromAsset.open(url!.path, forWrite: false),
+              toAsset.open(to.path, forWrite: true) else {
+            return false
+        }
+
+        // using already loaded frameTimes structure
+        let startIndex = timeToFrame(time: startTime)
+        var endIndex = timeToFrame(time: endTime)
+        if endIndex < count - 1 {
+            endIndex += 1
+        }
+
+        let currentIndex = frame
+        var width = 0, height = 0
+        for ix in startIndex...endIndex {
+            // TODO: error handling
+            fromAsset.seek(Int32(ix), whence: 0)
+
+            // need to read width & height
+            if ix == startIndex {
+                guard let frameCalibrationInfo = FrameCalibrationInfo.fromJson(data: fromAsset.info()) else {
+                    return false
+                }
+                width = frameCalibrationInfo.width
+                height = frameCalibrationInfo.height
+            }
+            toAsset.record(fromAsset.currentTime(), info: fromAsset.info(), count: Int32(width * height), depths: fromAsset.depths(), colors: fromAsset.colors())
+        }
+
+        return true
     }
 }

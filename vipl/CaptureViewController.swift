@@ -67,8 +67,8 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
 
     let rangeSlider = RangeSlider(frame: .zero)
     
-    private var capturedMovieUrl: URL?      // .work.mov
-    private var tmpMovieUrl: URL?           // .tmp.mov
+    private var capturedMovieUrl: URL?
+    private var tmpMovieUrl: URL?
 
     private var showPose: Bool = true
     private var poser = Poser()
@@ -107,8 +107,8 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         // TODO: setup the video preview view
         previewView.session = session
         
-        capturedMovieUrl = URL(fileURLWithPath: (NSTemporaryDirectory() as NSString).appendingPathComponent("vipl-work.mov"))
-        tmpMovieUrl = URL(fileURLWithPath: (NSTemporaryDirectory() as NSString).appendingPathComponent("vipl-temp.mov"))
+        capturedMovieUrl = nil
+        tmpMovieUrl = FileSystemHelper.getPrimaryTemporaryFileName()
 
         // register tap for captured video viewer
         capturedVideoView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(self.tapCapturedVideoView(_:))))
@@ -539,25 +539,6 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         return name == fns[0] ? fns[1] : fns[0]
     }
     
-    private func getNextFileName(ext: String = "mov") -> String {
-        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        var num = UserDefaults.standard.integer(forKey: "swing-number")
-        if num == 0 {
-            num = 1
-        }
-        while true {
-            let baseName = dir.appendingPathComponent("swing-\(String(format: "%04d", num))")
-            if FileManager.default.fileExists(atPath: baseName.appendingPathExtension("mov").path) || FileManager.default.fileExists(atPath: baseName.appendingPathExtension("MOV").path) || FileManager.default.fileExists(atPath: baseName.appendingPathExtension("moz").path) ||
-                FileManager.default.fileExists(atPath: baseName.appendingPathExtension("MOZ").path) {
-                num += 1
-                continue
-            }
-            let fileName = baseName.appendingPathExtension(ext)
-            UserDefaults.standard.set(num + 1, forKey: "swing-number")
-            return fileName.path
-        }
-    }
-    
     @IBAction private func record_stop(_ sender: Any) {
         if (movieOut?.isRecording ?? false) || pointCloudOut != nil {
             DispatchQueue.main.async {
@@ -781,6 +762,15 @@ extension CaptureViewController {
             self.setupMainMenu()
         }))
         var str: String
+        if self.cmdCapturePointCloud == 0 {
+            str = "Start Point Cloud Capture"
+        } else {
+            str = "Stop Point Cloud Capture"
+        }
+        options.append(UIAction(title: str, state: .off, handler: { _ in
+            self.togglePointCloudCapture()
+            self.setupMainMenu()
+        }))
 #if false
         switch self.sceneViewMode {
         case 0:
@@ -1142,9 +1132,9 @@ extension CaptureViewController {
         }
         let url: URL
         if PointCloudRecorder.isMovieFile(self.tmpMovieUrl!.path) {
-            url = URL(fileURLWithPath: self.getNextFileName(ext: "moz"))
+            url = FileSystemHelper.getNextFileName(ext: "moz")!
         } else {
-            url = URL(fileURLWithPath: self.getNextFileName(ext: "mov"))
+            url = FileSystemHelper.getNextFileName(ext: "mov")!
         }
 
         // TODO: error handling
@@ -1438,7 +1428,7 @@ extension CaptureViewController {
             pixels = pixels.resized(to: depths.size)!
         }
         if self.isMirrored {
-            pixels = pixels.mirrored()!
+            depths = depths.mirrored()!
         }
         guard var depths = depths.toFloats(),
               var colors = pixels.toBytes(),

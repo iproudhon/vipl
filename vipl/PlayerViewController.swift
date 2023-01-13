@@ -123,25 +123,6 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         self.setupPlayRange(lower, upper)
     }
 
-    private func getNextFileName(ext: String = "mov") -> String {
-        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        var num = UserDefaults.standard.integer(forKey: "swing-number")
-        if num == 0 {
-            num = 1
-        }
-        while true {
-            let baseName = dir.appendingPathComponent("swing-\(String(format: "%04d", num))")
-            if FileManager.default.fileExists(atPath: baseName.appendingPathExtension("mov").path) || FileManager.default.fileExists(atPath: baseName.appendingPathExtension("MOV").path) || FileManager.default.fileExists(atPath: baseName.appendingPathExtension("moz").path) ||
-                FileManager.default.fileExists(atPath: baseName.appendingPathExtension("MOZ").path) {
-                num += 1
-                continue
-            }
-            let fileName = baseName.appendingPathExtension(ext)
-            UserDefaults.standard.set(num + 1, forKey: "swing-number")
-            return fileName.path
-        }
-    }
-
     private func setAssetId() {
         if let asset = self.player.currentItem?.asset as? AVURLAsset {
             guard let creationDate = asset.creationDate?.value as? Date else {
@@ -161,16 +142,20 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     }
 
     @IBAction func save(asNew: Bool) {
+        if let url = url,
+           !asNew && !FileSystemHelper.isFileInAppDirectory(url: url) {
+            // TODO: either disable 'save' or show error dialog
+            self.log("Can't save. The file is not on App directory.")
+            return
+        }
+
         if let currentItem = self.player.currentItem {
             let url: URL!
             if !asNew {
-                let fn = NSUUID().uuidString
-                let path = (NSTemporaryDirectory() as NSString).appendingPathComponent((fn as NSString).appendingPathExtension("mov")!)
-                url = URL(fileURLWithPath: path)
+                url = FileSystemHelper.getPrimaryTemporaryFileName()
             } else {
-                url = URL(fileURLWithPath: getNextFileName())
+                url = FileSystemHelper.getNextFileName(ext: FileSystemHelper.mov)
             }
-
             let timeRange = CMTimeRangeFromTimeToTime(start: CMTime(seconds: Double(rangeSlider.lowerBound), preferredTimescale: 600), end: CMTime(seconds: Double(rangeSlider.upperBound), preferredTimescale: 600))
             let exporter = AVAssetExportSession(asset: currentItem.asset, presetName: AVAssetExportPresetHEVCHighestQuality)
 
@@ -205,7 +190,39 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                 }
             })
         } else if let pointCloudPlayer = pointCloudPlayer {
-            print("XXX: not implemented yet")
+            if !asNew {
+                // TODO: unsafe for now
+                let alert = UIAlertController(title: "Save", message: "Save has a problem for now. Do \"Save New\" instead for 3d captures.", preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                self.present(alert, animated: true, completion: nil)
+                return
+            }
+
+            let url: URL!
+            if !asNew {
+                url = FileSystemHelper.getPrimaryTemporaryFileName()
+            } else {
+                url = FileSystemHelper.getNextFileName(ext: FileSystemHelper.moz)
+            }
+            let timeRange = CMTimeRangeFromTimeToTime(start: CMTime(seconds: Double(rangeSlider.lowerBound), preferredTimescale: 600), end: CMTime(seconds: Double(rangeSlider.upperBound), preferredTimescale: 600))
+            if !pointCloudPlayer.export(to: url, startTime: timeRange.start, endTime: timeRange.end) {
+                log("Failed to save")
+            } else if asNew {
+                log("File saved to \(url.path)")
+            } else {
+                guard let orgUrl = pointCloudPlayer.url else { return }
+                pointCloudPlayer.close()
+                setAssetId()
+                do {
+                    try FileManager.default.removeItem(at: orgUrl)
+                    try FileManager.default.moveItem(at: url, to: orgUrl)
+                } catch {
+                    log("Failed to remove existing file: \(error.localizedDescription)")
+                    return
+                }
+                load(url: orgUrl)
+                log("File save to \(orgUrl.path)")
+            }
         }
     }
 
@@ -250,7 +267,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             self.pointCloudPlayer = PointCloudPlayer(view: self.sceneView, url: url)
             self.setupPlayerObservers()
             self.setAssetId()
-            self.pointCloudPlayer?.loadPointClouds(log: self.log)
+            // self.pointCloudPlayer?.loadPointClouds(log: self.log)
             _ = self.pointCloudPlayer?.seek(frame: 0)
         }
     }
@@ -447,13 +464,13 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         var str: String
         str = self.textLogView.isHidden ? "Show Logs" : "Hide Logs"
         options.append(UIAction(title: str, state: .off, handler: {_ in
-            self.setupMainMenu()
             self.textLogView.isHidden = !self.textLogView.isHidden
+            self.setupMainMenu()
         }))
         str = self.showSegments ? "Hide Segments" : "Show Segments"
         options.append(UIAction(title: str, state: .off, handler: {_ in
-            self.setupMainMenu()
             self.showSegments = !self.showSegments
+            self.setupMainMenu()
         }))
         options.append(UIAction(title: "Save", state: .off, handler: {_ in
             self.save(asNew: false)
