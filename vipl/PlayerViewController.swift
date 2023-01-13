@@ -6,13 +6,13 @@
 //
 
 import Foundation
+import MobileCoreServices
 import AVFoundation
 import AVKit
 import UIKit
-import MobileCoreServices
+import SceneKit
 
 /*
- 
 Menu Cameras             X
   Set Range
   Save
@@ -44,6 +44,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     private var reverseTransform: CGAffineTransform?
 
     @IBOutlet var playerView: PlayerView!
+    @IBOutlet var sceneView: SCNView!
     @IBOutlet weak var timeLabel: UILabel!
     @IBOutlet weak var textLogView: UITextView!
     @IBOutlet weak var frameBackButton: UIButton!
@@ -57,8 +58,11 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     @IBOutlet weak var overlayView: OverlayView!
     @IBOutlet weak var poseButton: UIButton!
     @IBOutlet weak var soundButton: UIButton!
+
+    // .moz
+    @objc private var pointCloudPlayer: PointCloudPlayer?
     
-    private let rangeSlider = RangeSlider(frame: .zero)
+    @objc private let rangeSlider = RangeSlider(frame: .zero)
 
     // for seek
     private var seekInProgress = false
@@ -81,16 +85,24 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     }
     
     @IBAction func stepBack(_ sender: Any) {
-        guard let currentItem = player.currentItem else { return }
-        if currentItem.canStepBackward {
-            currentItem.step(byCount: -1)
+        if let currentItem = player.currentItem {
+            if currentItem.canStepBackward {
+                currentItem.step(byCount: -1)
+            }
+        } else if let pointCloudPlayer = pointCloudPlayer {
+            _ = pointCloudPlayer.seek(frame: pointCloudPlayer.frame - 1)
+            self.rangeSlider.thumb = pointCloudPlayer.currentTime.seconds
         }
     }
     
     @IBAction func stepForward(_ sender: Any) {
-        guard let currentItem = player.currentItem else { return }
-        if currentItem.canStepForward {
-            currentItem.step(byCount: 1)
+        if let currentItem = player.currentItem {
+            if currentItem.canStepBackward {
+                currentItem.step(byCount: 1)
+            }
+        } else if let pointCloudPlayer = pointCloudPlayer {
+            _ = pointCloudPlayer.seek(frame: pointCloudPlayer.frame + 1)
+            self.rangeSlider.thumb = pointCloudPlayer.currentTime.seconds
         }
     }
     
@@ -110,79 +122,91 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         self.rangeSlider.upperBound = upper
         self.setupPlayRange(lower, upper)
     }
-    
-    private func getNextFileName() -> String {
-        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+
+    private func getNextFileName(ext: String = "mov") -> String {
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         var num = UserDefaults.standard.integer(forKey: "swing-number")
         if num == 0 {
             num = 1
         }
         while true {
-            let fileName = dir[0].appendingPathComponent("swing-\(String(format: "%04d", num))").appendingPathExtension("mov")
-            if FileManager.default.fileExists(atPath: fileName.path) {
+            let baseName = dir.appendingPathComponent("swing-\(String(format: "%04d", num))")
+            if FileManager.default.fileExists(atPath: baseName.appendingPathExtension("mov").path) || FileManager.default.fileExists(atPath: baseName.appendingPathExtension("MOV").path) || FileManager.default.fileExists(atPath: baseName.appendingPathExtension("moz").path) ||
+                FileManager.default.fileExists(atPath: baseName.appendingPathExtension("MOZ").path) {
                 num += 1
                 continue
             }
+            let fileName = baseName.appendingPathExtension(ext)
             UserDefaults.standard.set(num + 1, forKey: "swing-number")
             return fileName.path
         }
     }
 
-    private func setAssetId(asset: AVAsset?) {
-        guard let asset = asset as? AVURLAsset,
-        let creationDate = asset.creationDate?.value as? Date else {
-            self.assetId = ""
-            return
+    private func setAssetId() {
+        if let asset = self.player.currentItem?.asset as? AVURLAsset {
+            guard let creationDate = asset.creationDate?.value as? Date else {
+                self.assetId = ""
+                return
+            }
+            let v = Int64(creationDate.timeIntervalSince1970 * 1000) * Int64(asset.duration.seconds * 1000)
+            self.assetId = "\(asset.url.lastPathComponent):\(v)"
+        } else if let pointCloudPlayer = pointCloudPlayer,
+                  let creationDate = pointCloudPlayer.creationDate,
+                  let url = pointCloudPlayer.url {
+            let v = Int64(creationDate.timeIntervalSince1970 * 1000) * Int64(pointCloudPlayer.duration.seconds * 1000)
+            self.assetId = "\(url.lastPathComponent ):\(v)"
+        } else {
+            self.assetId = nil
         }
-        let v = Int64(creationDate.timeIntervalSince1970 * 1000) * Int64(asset.duration.seconds * 1000)
-        self.assetId = "\(asset.url.lastPathComponent):\(v)"
     }
 
     @IBAction func save(asNew: Bool) {
-        guard let currentItem = self.player.currentItem else { return }
+        if let currentItem = self.player.currentItem {
+            let url: URL!
+            if !asNew {
+                let fn = NSUUID().uuidString
+                let path = (NSTemporaryDirectory() as NSString).appendingPathComponent((fn as NSString).appendingPathExtension("mov")!)
+                url = URL(fileURLWithPath: path)
+            } else {
+                url = URL(fileURLWithPath: getNextFileName())
+            }
 
-        let url: URL!
-        if !asNew {
-            let fn = NSUUID().uuidString
-            let path = (NSTemporaryDirectory() as NSString).appendingPathComponent((fn as NSString).appendingPathExtension("mov")!)
-            url = URL(fileURLWithPath: path)
-        } else {
-            url = URL(fileURLWithPath: getNextFileName())
-        }
+            let timeRange = CMTimeRangeFromTimeToTime(start: CMTime(seconds: Double(rangeSlider.lowerBound), preferredTimescale: 600), end: CMTime(seconds: Double(rangeSlider.upperBound), preferredTimescale: 600))
+            let exporter = AVAssetExportSession(asset: currentItem.asset, presetName: AVAssetExportPresetHEVCHighestQuality)
 
-        let timeRange = CMTimeRangeFromTimeToTime(start: CMTime(seconds: Double(rangeSlider.lowerBound), preferredTimescale: 600), end: CMTime(seconds: Double(rangeSlider.upperBound), preferredTimescale: 600))
-        let exporter = AVAssetExportSession(asset: currentItem.asset, presetName: AVAssetExportPresetHEVCHighestQuality)
-
-        exporter?.videoComposition = currentItem.videoComposition
-        exporter?.metadata = currentItem.asset.metadata
-        exporter?.outputURL = url
-        exporter?.outputFileType = .mov
-        exporter?.timeRange = timeRange
-        exporter?.exportAsynchronously(completionHandler: { [weak exporter] in
-            DispatchQueue.main.async {
-                if let error = exporter?.error {
-                    print("failed \(error.localizedDescription)")
-                } else {
-                    if asNew {
-                        print("Video saved to \(String(describing: url?.path))")
+            exporter?.videoComposition = currentItem.videoComposition
+            exporter?.metadata = currentItem.asset.metadata
+            exporter?.outputURL = url
+            exporter?.outputFileType = .mov
+            exporter?.timeRange = timeRange
+            exporter?.exportAsynchronously(completionHandler: { [weak exporter] in
+                DispatchQueue.main.async {
+                    if let error = exporter?.error {
+                        print("failed \(error.localizedDescription)")
                     } else {
-                        guard let orgUrl = (self.player.currentItem?.asset as? AVURLAsset)?.url else { return }
-                        self.player.replaceCurrentItem(with: nil)
-                        self.setAssetId(asset: nil)
-                        do {
-                            try FileManager.default.removeItem(at: orgUrl)
-                            try FileManager.default.moveItem(at: url, to: orgUrl)
-                        } catch {
-                            print("Failed to remove existing file: \(error.localizedDescription)")
-                            return
+                        if asNew {
+                            print("Video saved to \(String(describing: url?.path))")
+                        } else {
+                            guard let orgUrl = (self.player.currentItem?.asset as? AVURLAsset)?.url else { return }
+                            self.player.replaceCurrentItem(with: nil)
+                            self.setAssetId()
+                            do {
+                                try FileManager.default.removeItem(at: orgUrl)
+                                try FileManager.default.moveItem(at: url, to: orgUrl)
+                            } catch {
+                                print("Failed to remove existing file: \(error.localizedDescription)")
+                                return
+                            }
+                            self.player.replaceCurrentItem(with: AVPlayerItem(url: orgUrl))
+                            self.setAssetId()
+                            print("Video saved to \(String(describing: orgUrl.path))")
                         }
-                        self.player.replaceCurrentItem(with: AVPlayerItem(url: orgUrl))
-                        self.setAssetId(asset: self.player.currentItem?.asset)
-                        print("Video saved to \(String(describing: orgUrl.path))")
                     }
                 }
-            }
-        })
+            })
+        } else if let pointCloudPlayer = pointCloudPlayer {
+            print("XXX: not implemented yet")
+        }
     }
 
     private var timeObserverToken: Any?
@@ -201,6 +225,35 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     private var deepLab: DeepLab!
 
     var url: URL?
+
+    func load(url: URL) {
+        if !PointCloudRecorder.isMovieFile(url.path) {
+            self.sceneView.isHidden = true
+            self.playerView.player = player
+            self.player.replaceCurrentItem(with: AVPlayerItem(url: url))
+            self.setAssetId()
+            self.setupPlayerObservers()
+
+            if let asset = self.player.currentItem?.asset {
+                (self.orientation, self.position, self.transform, self.reverseTransform) = asset.videoOrientation()
+            }
+            player.playImmediately(atRate: playSpeed)
+
+            DispatchQueue.main.async {
+                if let asset = self.player.currentItem?.asset {
+                    self.log(asset.info())
+                }
+            }
+        } else {
+            self.sceneView.isHidden = false
+            initSceneView()
+            self.pointCloudPlayer = PointCloudPlayer(view: self.sceneView, url: url)
+            self.setupPlayerObservers()
+            self.setAssetId()
+            self.pointCloudPlayer?.loadPointClouds(log: self.log)
+            _ = self.pointCloudPlayer?.seek(frame: 0)
+        }
+    }
     
     func loadAndPlayVideo(_ sender: Any) {
         if true {
@@ -220,12 +273,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
         if !urls[0].isFileURL { return }
-        let url = urls[0]
-        self.playerView.player = player
-        self.setupPlayerObservers()
-        self.player.replaceCurrentItem(with: AVPlayerItem(url: url))
-        self.setAssetId(asset: self.player.currentItem?.asset)
-        self.player.playImmediately(atRate: playSpeed)
+        load(url: urls[0])
     }
     
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
@@ -235,11 +283,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
         picker.dismiss(animated: true, completion: nil)
         guard let url = info[.mediaURL] as? URL else { return }
-        self.playerView.player = player
-        self.setupPlayerObservers()
-        self.player.replaceCurrentItem(with: AVPlayerItem(url: url))
-        self.setAssetId(asset: self.player.currentItem?.asset)
-        self.player.playImmediately(atRate: playSpeed)
+        load(url: url)
     }
     
     override func viewDidLoad() {
@@ -275,29 +319,20 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     }
 
     override func viewDidAppear(_ animated: Bool) {
-        guard let url = url else { return }
         setupPlaySpeedMenu()
         setupMainMenu()
         setupRangeMenu()
 
-        playerView.player = player
-        setupPlayerObservers()
-        player.replaceCurrentItem(with: AVPlayerItem(url: url))
-        self.setAssetId(asset: self.player.currentItem?.asset)
-        if let asset = self.player.currentItem?.asset {
-            (self.orientation, self.position, self.transform, self.reverseTransform) = asset.videoOrientation()
-        }
-        player.playImmediately(atRate: playSpeed)
-
-        DispatchQueue.main.async {
-            if let asset = self.player.currentItem?.asset {
-                self.log(asset.info())
-            }
+        if let url = url {
+            load(url: url)
         }
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         player.pause()
+        if let pointCloudPlayer = pointCloudPlayer {
+            pointCloudPlayer.close()
+        }
         if let timeObserverToken = timeObserverToken {
             player.removeTimeObserver(timeObserverToken)
             self.timeObserverToken = nil
@@ -335,6 +370,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         // player view
         self.playerView.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height - CGFloat(Int(buttonHeight * 3 / 2)) - CGFloat(sliderHeight))
         self.overlayView.frame.size = self.playerView.frame.size
+        self.sceneView.frame = self.overlayView.frame
 
         self.dismissButton.frame.origin = CGPoint(x: 0, y: 0)
         self.menuButton.frame.origin = CGPoint(x: self.playerView.frame.size.width - self.menuButton.frame.size.width, y: 0)
@@ -384,19 +420,6 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         x -= self.repeatButton.frame.size.width
     }
 
-    func playUrl(url: URL) {
-        self.url = url
-        setupPlaySpeedMenu()
-        setupMainMenu()
-        setupRangeMenu()
-
-        playerView.player = player
-        setupPlayerObservers()
-        player.replaceCurrentItem(with: AVPlayerItem(url: url))
-        self.setAssetId(asset: self.player.currentItem?.asset)
-        player.playImmediately(atRate: playSpeed)
-    }
-    
     func setupPlaySpeedMenu() {
         let doit = {(action: UIAction) in
             guard let rate = Float(action.title) else { return }
@@ -404,7 +427,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             self.player.rate = rate
         }
         var options = [UIAction]()
-        for i in ["0.05", "0.1", "0.2", "0.5", "1", "1.25", "1.5", "2"] {
+        for i in ["0.05", "0.1", "0.2", "0.5", "0.75", "1", "1.25", "1.5", "2"] {
             let item = UIAction(title: i, state: .off, handler: doit)
             if i == "1" {
                 item.state = .on
@@ -421,33 +444,29 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     
     func setupMainMenu() {
         var options = [UIAction]()
-        var item: UIAction
-        item = UIAction(title: "Toggle Logs", state: .off, handler: {_ in
-            DispatchQueue.main.async {
-                self.textLogView.isHidden = !self.textLogView.isHidden
-            }
-        })
-        options.append(item)
-        item = UIAction(title: "Toggle Segments", state: .off, handler: {_ in
+        var str: String
+        str = self.textLogView.isHidden ? "Show Logs" : "Hide Logs"
+        options.append(UIAction(title: str, state: .off, handler: {_ in
+            self.setupMainMenu()
+            self.textLogView.isHidden = !self.textLogView.isHidden
+        }))
+        str = self.showSegments ? "Hide Segments" : "Show Segments"
+        options.append(UIAction(title: str, state: .off, handler: {_ in
+            self.setupMainMenu()
             self.showSegments = !self.showSegments
-            self.refreshOverlayWithCurrentFrame()
-        })
-        options.append(item)
-        item = UIAction(title: "Save", state: .off, handler: {_ in
+        }))
+        options.append(UIAction(title: "Save", state: .off, handler: {_ in
             self.save(asNew: false)
-        })
-        options.append(item)
-        item = UIAction(title: "Save as New", state: .off, handler: {_ in
+        }))
+        options.append(UIAction(title: "Save as New", state: .off, handler: {_ in
             self.save(asNew: true)
-        })
-        options.append(item)
-        item = UIAction(title: "Delete", state: .off, handler: {_ in
+        }))
+        options.append(UIAction(title: "Delete", state: .off, handler: {_ in
             if let url = self.url {
                 try? FileManager.default.removeItem(at: url)
             }
             self.dismiss(animated: true)
-        })
-        options.append(item)
+        }))
         let menu = UIMenu(title: "vipl", children: options)
         
         menuButton.showsMenuAsPrimaryAction = true
@@ -464,24 +483,20 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         }
 
         var options = [UIAction]()
-        var item = UIAction(title: "Reset Range", state: .off, handler: { _ in
+        options.insert(UIAction(title: "Reset Range", state: .off, handler: { _ in
             self.rangeSlider.lowerBound = self.rangeSlider.min
             self.rangeSlider.upperBound = self.rangeSlider.max
             self.setupPlayRange(self.rangeSlider.min, self.rangeSlider.max)
-        })
-        options.insert(item, at: 0)
-        item = UIAction(title: "1.75 : 1.5", state: .off, handler: { _ in
+        }), at: 0)
+        options.insert(UIAction(title: "1.75 : 1.5", state: .off, handler: { _ in
             do_range(1.75, 1.5)
-        })
-        options.insert(item, at: 0)
-        item = UIAction(title: "2.0 : 5.0", state: .off, handler: { _ in
+        }), at: 0)
+        options.insert(UIAction(title: "2.0 : 5.0", state: .off, handler: { _ in
             do_range(2.0, 5.0)
-        })
-        options.insert(item, at: 0)
-        item = UIAction(title: "0.3 : 0.2", state: .off, handler: { _ in
+        }), at: 0)
+        options.insert(UIAction(title: "0.3 : 0.2", state: .off, handler: { _ in
             do_range(0.3, 0.2)
-        })
-        options.insert(item, at: 0)
+        }), at: 0)
 
         func do_poses(_ cmd: String) {
             switch cmd {
@@ -494,7 +509,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                 let currentTime = item.currentTime()
                 guard let pixelBuffer = self.getFramePixelBuffer(asset: item.asset, time: currentTime) else { return }
                 if cmd == "freeze-both" || cmd == "freeze-pose" {
-                    poser1.runModel(assetId: self.assetId!, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: self.reverseTransform!, time: currentTime, freeze: true)
+                    poser1.runModel(assetId: self.assetId!, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: self.reverseTransform!, time: currentTime, freeze: true) { _ in }
                 }
                 if cmd == "freeze-both" || cmd == "freeze-body" {
                     deepLab.runModel(assetId: self.assetId!, targetView: self.overlayView, image: pixelBuffer, transform: self.reverseTransform!, time: currentTime, freeze: true)
@@ -506,22 +521,18 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         }
 
         // posenet & foreground extraction
-        item = UIAction(title: "Reset Overlay", state: .off, handler: { _ in
+        options.insert(UIAction(title: "Reset Overlay", state: .off, handler: { _ in
             do_poses("reset")
-        })
-        options.insert(item, at: 0)
-        item = UIAction(title: "Freeze", state: .off, handler: { _ in
+        }), at: 0)
+        options.insert(UIAction(title: "Freeze", state: .off, handler: { _ in
             do_poses("freeze-both")
-        })
-        options.insert(item, at: 0)
-        item = UIAction(title: "Freeze Pose", state: .off, handler: { _ in
+        }), at: 0)
+        options.insert(UIAction(title: "Freeze Pose", state: .off, handler: { _ in
             do_poses("freeze-pose")
-        })
-        options.insert(item, at: 0)
-        item = UIAction(title: "Freeze Body", state: .off, handler: { _ in
+        }), at: 0)
+        options.insert(UIAction(title: "Freeze Body", state: .off, handler: { _ in
             do_poses("freeze-body")
-        })
-        options.insert(item, at: 0)
+        }), at: 0)
 
         let menu = UIMenu(title: "Ranges & Overlays", children: options)
         rangeButton.showsMenuAsPrimaryAction = true
@@ -529,98 +540,118 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     }
 
     func setupPlayerObservers() {
-        playerTimeControlStatusObserver = player.observe(\AVPlayer.timeControlStatus, options: [.initial, .new]) { [unowned self] _, _ in
-            DispatchQueue.main.async {
-                self.setPlayPauseButtonImage()
-                self.setRepeatButtonImage()
-            }
-        }
-        
-        let interval = CMTime(value: 1, timescale: 600)
-        timeObserverToken = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [unowned self] time in
-            let timeEllapsed = CGFloat(time.seconds)
-            self.rangeSlider.thumb = CGFloat(timeEllapsed)
-            self.timeLabel.text = "\(self.createTimeString(time: Float(self.rangeSlider.lowerBound))) \(self.createTimeString(time: Float(timeEllapsed))) \(self.createTimeString(time: Float(self.rangeSlider.upperBound)))"
-            if let currentItem = player.currentItem {
-                let startTime = CMTime(seconds: self.rangeSlider.lowerBound, preferredTimescale: 600)
-                let endTime = CMTime(seconds: self.rangeSlider.upperBound, preferredTimescale: 600)
-                if !self.isRepeat {
-                    if timeEllapsed >= self.rangeSlider.upperBound {
-                        currentItem.seek(to: endTime, toleranceBefore: .zero, toleranceAfter: .zero, completionHandler: nil)
-                    }
-                } else {
-                    if currentItem.currentTime() == currentItem.duration {
-                        currentItem.seek(to: startTime, toleranceBefore: .zero, toleranceAfter: .zero) { success in
-                            if success && self.player.timeControlStatus == .paused {
-                                self.player.playImmediately(atRate: self.playSpeed)
-                            }
-                        }
-                    } else if timeEllapsed >= self.rangeSlider.upperBound {
-                        let wasPlaying = self.player.timeControlStatus == .playing
-                        if wasPlaying {
-                            self.player.pause()
-                        }
-                        currentItem.seek(to: startTime, toleranceBefore: .zero, toleranceAfter: .zero) { success in
-                            if wasPlaying {
-                                self.player.playImmediately(atRate: self.playSpeed)
-                            }
-                        }
-                    }
+        if self.player.currentItem != nil {
+            playerTimeControlStatusObserver = player.observe(\AVPlayer.timeControlStatus, options: [.initial, .new]) { [unowned self] _, _ in
+                DispatchQueue.main.async {
+                    self.setPlayPauseButtonImage()
+                    self.setRepeatButtonImage()
                 }
             }
-        }
 
-        playerItemFastForwardObserver = player.observe(\AVPlayer.currentItem?.canPlayFastForward, options: [.new, .initial]) { [unowned self] player, _ in
-            DispatchQueue.main.async {
-                // self.fastForwardButton.isEnabled = player.currentItem?.canPlayFastForward ?? false
-            }
-        }
-        
-        playerItemReverseObserver = player.observe(\AVPlayer.currentItem?.canPlayReverse, options: [.new, .initial]) { [unowned self] player, _ in
-            DispatchQueue.main.async {
-                // self.rewindButton.isEnabled = player.currentItem?.canPlayReverse ?? false
-            }
-        }
-        
-        playerItemFastReverseObserver = player.observe(\AVPlayer.currentItem?.canPlayFastReverse, options: [.new, .initial]) { [unowned self] player, _ in
-            DispatchQueue.main.async {
-                // self.rewindButton.isEnabled = player.currentItem?.canPlayFastReverse ?? false
-            }
-        }
-        
-        playerItemStatusObserver = player.observe(\AVPlayer.currentItem?.status, options: [.new, .initial, .old]) { [unowned self] player, _ in
-            if let item = player.currentItem {
-                if item.status == .readyToPlay {
-                    item.add(self.playerItemVideoOutput)
-                    self.displayLink.add(to: .main, forMode: .common)
+            let interval = CMTime(value: 1, timescale: 600)
+            timeObserverToken = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [unowned self] time in
+                let timeEllapsed = CGFloat(time.seconds)
+                self.rangeSlider.thumb = CGFloat(timeEllapsed)
+                self.timeLabel.text = "\(self.createTimeString(time: Float(self.rangeSlider.lowerBound))) \(self.createTimeString(time: Float(timeEllapsed))) \(self.createTimeString(time: Float(self.rangeSlider.upperBound)))"
+                if let currentItem = player.currentItem {
+                    let startTime = CMTime(seconds: self.rangeSlider.lowerBound, preferredTimescale: 600)
+                    let endTime = CMTime(seconds: self.rangeSlider.upperBound, preferredTimescale: 600)
+                    if !self.isRepeat {
+                        if timeEllapsed >= self.rangeSlider.upperBound {
+                            currentItem.seek(to: endTime, toleranceBefore: .zero, toleranceAfter: .zero, completionHandler: nil)
+                        }
+                    } else {
+                        if currentItem.currentTime() == currentItem.duration {
+                            currentItem.seek(to: startTime, toleranceBefore: .zero, toleranceAfter: .zero) { success in
+                                if success && self.player.timeControlStatus == .paused {
+                                    self.player.playImmediately(atRate: self.playSpeed)
+                                }
+                            }
+                        } else if timeEllapsed >= self.rangeSlider.upperBound {
+                            let wasPlaying = self.player.timeControlStatus == .playing
+                            if wasPlaying {
+                                self.player.pause()
+                            }
+                            currentItem.seek(to: startTime, toleranceBefore: .zero, toleranceAfter: .zero) { success in
+                                if wasPlaying {
+                                    self.player.playImmediately(atRate: self.playSpeed)
+                                }
+                            }
+                        }
+                    }
                 }
             }
-            DispatchQueue.main.async {
-                self.updateUIForPlayerItemStatus()
+
+            playerItemFastForwardObserver = player.observe(\AVPlayer.currentItem?.canPlayFastForward, options: [.new, .initial]) { [unowned self] player, _ in
+                DispatchQueue.main.async {
+                    // self.fastForwardButton.isEnabled = player.currentItem?.canPlayFastForward ?? false
+                }
+            }
+
+            playerItemReverseObserver = player.observe(\AVPlayer.currentItem?.canPlayReverse, options: [.new, .initial]) { [unowned self] player, _ in
+                DispatchQueue.main.async {
+                    // self.rewindButton.isEnabled = player.currentItem?.canPlayReverse ?? false
+                }
+            }
+
+            playerItemFastReverseObserver = player.observe(\AVPlayer.currentItem?.canPlayFastReverse, options: [.new, .initial]) { [unowned self] player, _ in
+                DispatchQueue.main.async {
+                    // self.rewindButton.isEnabled = player.currentItem?.canPlayFastReverse ?? false
+                }
+            }
+
+            playerItemStatusObserver = player.observe(\AVPlayer.currentItem?.status, options: [.new, .initial, .old]) { [unowned self] player, _ in
+                if let item = player.currentItem {
+                    if item.status == .readyToPlay {
+                        item.add(self.playerItemVideoOutput)
+                        self.displayLink.add(to: .main, forMode: .common)
+                    }
+                }
+                DispatchQueue.main.async {
+                    self.updateUIForPlayerItemStatus()
+                }
+            }
+        } else if let pointCloudPlayer = pointCloudPlayer {
+            // playerTimeControlStatusObserver
+            playerItemStatusObserver = observe(\.pointCloudPlayer!.status, options: [.initial, .new, .old]) { _, _ in
+                DispatchQueue.main.async {
+                    self.setPlayPauseButtonImage()
+                    self.setRepeatButtonImage()
+                    self.updateUIForPlayerItemStatus()
+                }
+            }
+            playerItemFastReverseObserver = observe(\.pointCloudPlayer!.currentTime, options: [.initial, .new, .old]) { _, _ in
+                DispatchQueue.main.async {
+                    // TODO: more work needed to range slider
+                    // self.rangeSlider.thumb = CGFloat(pointCloudPlayer.currentTime.seconds)
+                    self.timeLabel.text = "\(self.createTimeString(time: Float(self.rangeSlider.lowerBound))) \(self.createTimeString(time: Float(self.rangeSlider.thumb))) \(self.createTimeString(time: Float(self.rangeSlider.upperBound)))"
+                }
             }
         }
     }
     
     @IBAction func togglePlay(_ sender: Any) {
-        switch player.timeControlStatus {
-        case .playing:
-            player.pause()
-        case .paused:
-            if let currentItem = player.currentItem {
-                if Int(currentItem.currentTime().seconds * 100) >= Int(rangeSlider.upperBound * 100) {
-//                if CGFloat(currentItem.currentTime().seconds) >= rangeSlider.upperBound {
-                    let startTime = CMTime(seconds: Double(rangeSlider.lowerBound), preferredTimescale: 600)
-                    currentItem.seek(to: startTime, toleranceBefore: .zero, toleranceAfter: .zero) { success in
-                        if success {
-                            self.player.playImmediately(atRate: self.playSpeed)
+        if player.currentItem != nil {
+            switch player.timeControlStatus {
+            case .playing:
+                player.pause()
+            case .paused:
+                if let currentItem = player.currentItem {
+                    if Int(currentItem.currentTime().seconds * 100) >= Int(rangeSlider.upperBound * 100) {
+                        //                if CGFloat(currentItem.currentTime().seconds) >= rangeSlider.upperBound {
+                        let startTime = CMTime(seconds: Double(rangeSlider.lowerBound), preferredTimescale: 600)
+                        currentItem.seek(to: startTime, toleranceBefore: .zero, toleranceAfter: .zero) { success in
+                            if success {
+                                self.player.playImmediately(atRate: self.playSpeed)
+                            }
                         }
+                    } else {
+                        self.player.playImmediately(atRate: self.playSpeed)
                     }
-                } else {
-                    self.player.playImmediately(atRate: self.playSpeed)
                 }
+            default:
+                player.pause()
             }
-        default:
-            player.pause()
         }
     }
     
@@ -671,34 +702,58 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     }
     
     func updateUIForPlayerItemStatus() {
-        guard let currentItem = player.currentItem else { return }
-        switch currentItem.status {
-        case .failed:
-            playPauseButton.isEnabled = false
-            frameBackButton.isEnabled = false
-            frameForwardButton.isEnabled = false
-            rangeSlider.isEnabled = false
-            timeLabel.isEnabled = false
-        case .readyToPlay:
-            playPauseButton.isEnabled = true
-            frameBackButton.isEnabled = true
-            frameForwardButton.isEnabled = true
-            rangeSlider.isEnabled = true
-            timeLabel.isEnabled = true
-            let newDurationSeconds = CGFloat(currentItem.duration.seconds)
-            let currentTime = CGFloat(CMTimeGetSeconds(player.currentTime()))
-            rangeSlider.min = CGFloat(0)
-            rangeSlider.max = CGFloat(newDurationSeconds)
-            rangeSlider.lowerBound = rangeSlider.min
-            rangeSlider.upperBound = rangeSlider.max
-            rangeSlider.thumb = CGFloat(currentTime)
-            timeLabel.text = createTimeString(time: Float(currentTime))
-        default:
-            playPauseButton.isEnabled = false
-            frameBackButton.isEnabled = false
-            frameForwardButton.isEnabled = false
-            rangeSlider.isEnabled = false
-            timeLabel.isEnabled = false
+        if let currentItem = player.currentItem {
+            switch currentItem.status {
+            case .failed:
+                playPauseButton.isEnabled = false
+                frameBackButton.isEnabled = false
+                frameForwardButton.isEnabled = false
+                rangeSlider.isEnabled = false
+                timeLabel.isEnabled = false
+            case .readyToPlay:
+                playPauseButton.isEnabled = true
+                frameBackButton.isEnabled = true
+                frameForwardButton.isEnabled = true
+                rangeSlider.isEnabled = true
+                timeLabel.isEnabled = true
+                let newDurationSeconds = CGFloat(currentItem.duration.seconds)
+                let currentTime = CGFloat(CMTimeGetSeconds(player.currentTime()))
+                rangeSlider.min = CGFloat(0)
+                rangeSlider.max = CGFloat(newDurationSeconds)
+                rangeSlider.lowerBound = rangeSlider.min
+                rangeSlider.upperBound = rangeSlider.max
+                rangeSlider.thumb = CGFloat(currentTime)
+                timeLabel.text = createTimeString(time: Float(currentTime))
+            default:
+                playPauseButton.isEnabled = false
+                frameBackButton.isEnabled = false
+                frameForwardButton.isEnabled = false
+                rangeSlider.isEnabled = false
+                timeLabel.isEnabled = false
+            }
+        } else if let pointCloudPlayer = pointCloudPlayer {
+            switch pointCloudPlayer.status {
+            case .stopped, .playing:
+                playPauseButton.isEnabled = true
+                frameBackButton.isEnabled = true
+                frameForwardButton.isEnabled = true
+                rangeSlider.isEnabled = true
+                timeLabel.isEnabled = true
+                let newDurationSeconds = CGFloat(pointCloudPlayer.duration.seconds)
+                let currentTime = CGFloat(CMTimeGetSeconds(pointCloudPlayer.currentTime))
+                rangeSlider.min = CGFloat(0)
+                rangeSlider.max = CGFloat(newDurationSeconds)
+                rangeSlider.lowerBound = rangeSlider.min
+                rangeSlider.upperBound = rangeSlider.max
+                rangeSlider.thumb = CGFloat(currentTime)
+                timeLabel.text = "\(self.createTimeString(time: Float(self.rangeSlider.lowerBound))) \(self.createTimeString(time: Float(pointCloudPlayer.currentTime.seconds))) \(self.createTimeString(time: Float(self.rangeSlider.upperBound)))"
+            default:
+                playPauseButton.isEnabled = false
+                frameBackButton.isEnabled = false
+                frameForwardButton.isEnabled = false
+                rangeSlider.isEnabled = false
+                timeLabel.isEnabled = false
+            }
         }
     }
 
@@ -726,14 +781,25 @@ extension PlayerViewController {
     private func smoothSeekInner(completionHandler: @escaping (Bool) -> Void) {
         self.seekInProgress = true
         let to = self.seekChaseTime
-        player.seek(to: to, toleranceBefore: CMTime.zero, toleranceAfter: CMTime.zero) { [weak self] success in
-            guard let `self` = self else {
-                self?.seekInProgress = false
-                return
+
+        if player.currentItem != nil {
+            player.seek(to: to, toleranceBefore: CMTime.zero, toleranceAfter: CMTime.zero) { [weak self] success in
+                guard let `self` = self else {
+                    self?.seekInProgress = false
+                    return
+                }
+                if CMTimeCompare(to, self.seekChaseTime) == 0 {
+                    self.seekInProgress = false
+                    completionHandler(success)
+                } else {
+                    self.smoothSeekInner(completionHandler: completionHandler)
+                }
             }
+        } else if let pointCloudPlayer = pointCloudPlayer {
+            _ = pointCloudPlayer.seek(time: to)
             if CMTimeCompare(to, self.seekChaseTime) == 0 {
                 self.seekInProgress = false
-                completionHandler(success)
+                completionHandler(true)
             } else {
                 self.smoothSeekInner(completionHandler: completionHandler)
             }
@@ -741,7 +807,7 @@ extension PlayerViewController {
     }
 
     private func smoothSeek(to: CMTime, completionHandler: @escaping (Bool) -> Void) {
-        guard player.currentItem?.status == .readyToPlay else {
+        guard player.currentItem?.status == .readyToPlay || pointCloudPlayer != nil else {
             self.seekInProgress = false
             return
         }
@@ -780,21 +846,23 @@ extension PlayerViewController {
     }
     
     func setupPlayRange(_ min: Double, _ max: Double) {
-        // self.player?.currentItem?.forwardPlaybackEndTime = endTime
-        if let boundaryTimeObserverToken = boundaryTimeObserverToken {
-            player.removeTimeObserver(boundaryTimeObserverToken)
-            self.boundaryTimeObserverToken = nil
-        }
-        var times = [NSValue]()
-        times.append(NSValue(time: CMTime(seconds: max, preferredTimescale: 600)))
-        boundaryTimeObserverToken = player.addBoundaryTimeObserver(forTimes: times, queue: .main) { [weak self] in
-            if let currentItem = self!.player.currentItem {
-                if !self!.isRepeat {
-                    self!.player.pause()
-                } else {
-                    let startTime = CMTime(seconds: min, preferredTimescale: 600)
-                    currentItem.seek(to: startTime, completionHandler: nil)
-                    self!.player.playImmediately(atRate: self!.playSpeed)
+        if player.currentItem != nil {
+            // self.player?.currentItem?.forwardPlaybackEndTime = endTime
+            if let boundaryTimeObserverToken = boundaryTimeObserverToken {
+                player.removeTimeObserver(boundaryTimeObserverToken)
+                self.boundaryTimeObserverToken = nil
+            }
+            var times = [NSValue]()
+            times.append(NSValue(time: CMTime(seconds: max, preferredTimescale: 600)))
+            boundaryTimeObserverToken = player.addBoundaryTimeObserver(forTimes: times, queue: .main) { [weak self] in
+                if let currentItem = self!.player.currentItem {
+                    if !self!.isRepeat {
+                        self!.player.pause()
+                    } else {
+                        let startTime = CMTime(seconds: min, preferredTimescale: 600)
+                        currentItem.seek(to: startTime, completionHandler: nil)
+                        self!.player.playImmediately(atRate: self!.playSpeed)
+                    }
                 }
             }
         }
@@ -813,7 +881,7 @@ extension PlayerViewController {
                     case .posenet:
                         poser2.runModel(targetView: overlayView, pixelBuffer: buffer)
                     case .movenetLightning, .movenetThunder:
-                        poser1.runModel(assetId: self.assetId!, targetView: overlayView, pixelBuffer: buffer, transform: self.reverseTransform!, time: currentTime)
+                        poser1.runModel(assetId: self.assetId, targetView: overlayView, pixelBuffer: buffer, transform: self.reverseTransform!, time: currentTime, freeze: false) { _ in }
                     default:
                         break
                     }
@@ -843,7 +911,8 @@ extension PlayerViewController {
         let currentTime = item.currentTime()
         guard let pixelBuffer = self.getFramePixelBuffer(asset: item.asset, time: currentTime) else { return }
         if self.showPose {
-            self.poser1.runModel(assetId: self.assetId!, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: self.reverseTransform!, time: currentTime)
+            self.poser1.runModel(assetId: self.assetId!, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: self.reverseTransform!, time: currentTime, freeze: false) { _ in
+            }
         } else {
             self.overlayView.setPose(nil, CMTime.zero)
         }
@@ -853,6 +922,44 @@ extension PlayerViewController {
             self.overlayView.setSnap(nil, CMTime.zero)
         }
         self.overlayView.draw(size: CGSize(width: pixelBuffer.size.height, height: pixelBuffer.size.width))
+    }
+}
+
+extension PlayerViewController {
+    func initSceneView() {
+        let scene = SCNScene()
+
+        // create and add a camera to the scene
+        let cameraNode = SCNNode()
+        cameraNode.camera = SCNCamera()
+        scene.rootNode.addChildNode(cameraNode)
+
+        // place the camera
+        cameraNode.position = SCNVector3(x: 0, y: 0, z: 0)
+        cameraNode.camera!.zNear = 0
+        cameraNode.camera!.automaticallyAdjustsZRange = true
+
+        /*
+        // create and add a light to the scene
+        let lightNode = SCNNode()
+        lightNode.light = SCNLight()
+        lightNode.light!.type = .omni
+        lightNode.position = SCNVector3(x: 0, y: 10, z: 10)
+        scene.rootNode.addChildNode(lightNode)
+
+        // create and add an ambient light to the scene
+        let ambientLightNode = SCNNode()
+        ambientLightNode.light = SCNLight()
+        ambientLightNode.light!.type = .ambient
+        ambientLightNode.light!.color = UIColor.white
+        scene.rootNode.addChildNode(ambientLightNode)
+        */
+
+        let axes = PointCloud.buildAxes()
+        scene.rootNode.addChildNode(axes)
+
+        sceneView.scene = scene
+        sceneView.allowsCameraControl = true
     }
 }
 

@@ -64,6 +64,8 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
     @IBOutlet private weak var overlayView: OverlayView!
     @IBOutlet private weak var sceneView: SCNView!
     @IBOutlet private weak var textLogView: UITextView!
+
+    let rangeSlider = RangeSlider(frame: .zero)
     
     private var capturedMovieUrl: URL?      // .work.mov
     private var tmpMovieUrl: URL?           // .tmp.mov
@@ -71,15 +73,27 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
     private var showPose: Bool = true
     private var poser = Poser()
 
-    // depth data -> grayscale helper
-    private var depth2grayscale = DepthToGrayscaleConverter()
+    // focus point
+    private var focusPoint = CGPoint(x: 0, y: 0)
+
 
     // point cloud stuff
+    private var depthDataFilter: Bool = true
+    private var pointClouds: PointCloudCollection?
+    private var sceneViewMode: Int = 0
     private var cmdCapturePointCloud: Int = 0
+
 
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        view.addSubview(rangeSlider)
+        rangeSlider.addTarget(self, action: #selector(rangeSliderValueChanged(_:)), for: .valueChanged)
+
         setupLayout()
+
+        self.pointClouds = PointCloudCollection(scnView: sceneView, count: 100)
+        self.overlayView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(focusAndExposeTap(_:))))
 
         setupMainMenu()
         if self.chosenCamera == nil {
@@ -178,6 +192,11 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
             if let movieOut = self.movieOut, movieOut.isRecording {
                 movieOut.stop(completionHandler: self.onStopRecording)
             }
+            if let pointCloudOut = self.pointCloudOut {
+                pointCloudOut.close()
+                self.pointCloudOut = nil
+                self.onStopRecording()
+            }
             if self.setupResult == .success {
                 self.session.stopRunning()
                 self.isSessionRunning = self.session.isRunning
@@ -217,11 +236,6 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         self.menuButton.frame.origin = CGPoint(x: self.previewView.frame.width - self.menuButton.frame.size.width, y: 0)
         self.durationLabel.frame.origin = CGPoint(x: (self.previewView.frame.width - self.durationLabel.frame.width) / 2, y: self.camerasMenu.frame.origin.y + self.camerasMenu.frame.height + 10)
 
-        let width = rect.width * 2 / 5
-        height = self.previewView.frame.height * width / self.previewView.frame.width
-        //self.sceneView.frame = CGRect(x: rect.width - width, y: self.durationLabel.frame.origin.y + self.durationLabel.frame.height, width: width, height: height)
-        self.sceneView.frame = self.previewView.frame
-
         y = self.previewView.frame.origin.y + self.previewView.frame.height
         height = rect.minY + rect.height - y
         self.textLogView.frame = CGRect(x: rect.minX, y: self.previewView.frame.origin.y + self.previewView.frame.size.height, width: rect.width, height: height)
@@ -230,10 +244,12 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         y = self.previewView.frame.origin.y + self.previewView.frame.size.height
         y += ((rect.minY + rect.height - y) - CGFloat(buttonSize)) / 2
         self.recordButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonSize), height: CGFloat(buttonSize))
+
+        self.refreshSceneView()
     }
-    
+
     override var shouldAutorotate: Bool {
-        return !(movieOut?.isRecording ?? false)
+        return !(movieOut?.isRecording ?? false || pointCloudOut != nil)
     }
     
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
@@ -292,6 +308,13 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
 
         // video input device
         setupResult = self.selectCamera()
+
+        DispatchQueue.main.async {
+            if self.windowOrientation != .unknown,
+               let orientation = AVCaptureVideoOrientation(interfaceOrientation: self.windowOrientation) {
+                self.previewView.videoPreviewLayer.connection?.videoOrientation = orientation
+            }
+        }
     }
     
     @IBAction private func resumeInterruptedSession(_ resumeButton: UIButton) {
@@ -338,7 +361,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         videoOutput.setSampleBufferDelegate(self, queue: self.sessionQueue)
 
         let depthDataOutput = AVCaptureDepthDataOutput()
-        depthDataOutput.isFilteringEnabled = false
+        depthDataOutput.isFilteringEnabled = self.depthDataFilter
         depthDataOutput.alwaysDiscardsLateDepthData = false
         depthDataOutput.setDelegate(self, callbackQueue: self.sessionQueue)
 
@@ -395,8 +418,10 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
     
     private let videoDeviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera, .builtInDualCamera, .builtInTrueDepthCamera, .builtInDualWideCamera], mediaType: .video, position: .unspecified)
     
-    @IBAction private func focusAndExposeTap(_ gestureRecognizer: UITapGestureRecognizer) {
+//    @IBAction private func focusAndExposeTap(_ gestureRecognizer: UITapGestureRecognizer) {
+    @objc func focusAndExposeTap(_ gestureRecognizer: UITapGestureRecognizer) {
         let devicePoint = previewView.videoPreviewLayer.captureDevicePointConverted(fromLayerPoint: gestureRecognizer.location(in: gestureRecognizer.view))
+        print("XXX: \(gestureRecognizer.location(in: gestureRecognizer.view)) -> \(devicePoint)")
         focus(with: .autoFocus, exposureMode: .autoExpose, at: devicePoint, monitorSubjectAreaChange: true)
     }
     
@@ -419,6 +444,18 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
                 print("Can't lock device for configuration: \(error)")
             }
         }
+    }
+
+    func mayFocus(point: CGPoint) {
+        if abs(self.focusPoint.x - point.x) <= 50 && abs(self.focusPoint.y - point.y) <= 50 {
+            return
+        }
+        let oldPoint = self.focusPoint
+        self.focusPoint = point
+        let devicePoint = previewView.videoPreviewLayer.captureDevicePointConverted(fromLayerPoint: point)
+        print("XXX: focus \(point) -> \(devicePoint) <- \(oldPoint)")
+        //focus(with: .autoFocus, exposureMode: .autoExpose, at: devicePoint, monitorSubjectAreaChange: true)
+        focus(with: .locked, exposureMode: .autoExpose, at: devicePoint, monitorSubjectAreaChange: true)
     }
     
     func tenBitVariantOfFormat(activeFormat: AVCaptureDevice.Format) -> AVCaptureDevice.Format? {
@@ -486,6 +523,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
     }
     
     private var movieOut: CaptureMovieFileOuptut?
+    private var pointCloudOut: PointCloudRecorder?
     private var backgroundRecordingID: UIBackgroundTaskIdentifier?
     
     @IBOutlet private weak var recordButton: UIButton!
@@ -501,36 +539,44 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         return name == fns[0] ? fns[1] : fns[0]
     }
     
-    private func getNextFileName() -> String {
-        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+    private func getNextFileName(ext: String = "mov") -> String {
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         var num = UserDefaults.standard.integer(forKey: "swing-number")
         if num == 0 {
             num = 1
         }
         while true {
-            let fileName = dir[0].appendingPathComponent("swing-\(String(format: "%04d", num))").appendingPathExtension("mov")
-            if FileManager.default.fileExists(atPath: fileName.path) {
+            let baseName = dir.appendingPathComponent("swing-\(String(format: "%04d", num))")
+            if FileManager.default.fileExists(atPath: baseName.appendingPathExtension("mov").path) || FileManager.default.fileExists(atPath: baseName.appendingPathExtension("MOV").path) || FileManager.default.fileExists(atPath: baseName.appendingPathExtension("moz").path) ||
+                FileManager.default.fileExists(atPath: baseName.appendingPathExtension("MOZ").path) {
                 num += 1
                 continue
             }
+            let fileName = baseName.appendingPathExtension(ext)
             UserDefaults.standard.set(num + 1, forKey: "swing-number")
             return fileName.path
         }
     }
     
     @IBAction private func record_stop(_ sender: Any) {
-        if movieOut?.isRecording ?? false {
+        if (movieOut?.isRecording ?? false) || pointCloudOut != nil {
             DispatchQueue.main.async {
                 self.recordButton.isEnabled = false
                 self.recordButton.setBackgroundImage(UIImage(systemName: "record.circle"), for: .normal)
                 self.recordButton.tintColor = nil
             }
             sessionQueue.async {
-                self.movieOut?.stop(completionHandler: self.onStopRecording)
+                if self.movieOut != nil {
+                    self.movieOut?.stop(completionHandler: self.onStopRecording)
+                } else if self.pointCloudOut != nil {
+                    self.pointCloudOut?.close()
+                    self.pointCloudOut = nil
+                    self.onStopRecording()
+                }
             }
         } else {
             DispatchQueue.main.async {
-                self.recordButton.isEnabled = false
+                self.recordButton.isEnabled = true
                 self.recordButton.setBackgroundImage(UIImage(systemName: "stop.circle.fill"), for: .normal)
                 self.recordButton.tintColor = .systemRed
             }
@@ -565,12 +611,25 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
             // TODO: error handling
             try? FileManager.default.removeItem(at: self.tmpMovieUrl!)
 
-            self.movieOut = CaptureMovieFileOuptut()
-            sessionQueue.async {
-                // TODO: error handling
-                let transform = self.ignoreOrientation ? CGAffineTransformIdentity : self.transform ?? CGAffineTransformIdentity
-                try? self.movieOut?.start(url: self.tmpMovieUrl!, videoSettings: videoSettings, transform: transform, audioSettings: audioSettings, location: self.locationManager.location)
-                self.onStartRecording()
+            if sender as? UIButton == self.recordButton {
+                self.movieOut = CaptureMovieFileOuptut()
+                sessionQueue.async {
+                    // TODO: error handling
+                    let transform = self.ignoreOrientation ? CGAffineTransformIdentity : self.transform ?? CGAffineTransformIdentity
+                    try? self.movieOut?.start(url: self.tmpMovieUrl!, videoSettings: videoSettings, transform: transform, audioSettings: audioSettings, location: self.locationManager.location)
+                    self.onStartRecording()
+                }
+            } else {
+                self.pointCloudOut = PointCloudRecorder()
+                sessionQueue.async {
+                    // TODO: error handling
+                    if !(self.pointCloudOut?.open(self.tmpMovieUrl!.path, forWrite: true) ?? false) {
+                        self.log("failed to start point cloud recording")
+                        self.pointCloudOut?.close()
+                        self.pointCloudOut = nil
+                    }
+                    self.onStartRecording()
+                }
             }
         }
         return
@@ -585,7 +644,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
 
             DispatchQueue.main.async {
 //                self.cameraButton.isEnabled = isSessionRunning && self.videoDeviceDiscoverySession.uniqueDevicePositionsCount > 1
-                self.recordButton.isEnabled = isSessionRunning
+                // self.recordButton.isEnabled = isSessionRunning
             }
         }
         keyValueObservations.append(keyValueObservation)
@@ -638,7 +697,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
     private func setRecommendedFrameRateRangeForPressureState(systemPressureState: AVCaptureDevice.SystemPressureState) {
         let pressureLevel = systemPressureState.level
         if pressureLevel == .serious || pressureLevel == .critical {
-            if self.movieOut == nil || self.movieOut?.isRecording == false {
+            if (self.movieOut == nil || self.movieOut?.isRecording == false) && self.pointCloudOut == nil {
                 do {
                     try self.videoDeviceInput.device.lockForConfiguration()
                     print("WARNING: Reached elevated system pressure level: \(pressureLevel). Throttling frame rate.")
@@ -658,6 +717,13 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         if let movieOut = self.movieOut, movieOut.isRecording {
             sessionQueue.async {
                 movieOut.stop(completionHandler: self.onStopRecording)
+            }
+        }
+        if let pointCloudOut = self.pointCloudOut {
+            sessionQueue.async {
+                pointCloudOut.close()
+                self.pointCloudOut = nil
+                self.onStopRecording()
             }
         }
 
@@ -710,30 +776,66 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
 extension CaptureViewController {
     func setupMainMenu() {
         var options = [UIAction]()
-        var item: UIAction
-
-        item = UIAction(title: "Toggle Logs", state: .off, handler: { _ in
-            DispatchQueue.main.async {
-                self.textLogView.isHidden = !self.textLogView.isHidden
+        options.append(UIAction(title: self.textLogView.isHidden ? "Show Logs" : "Hide Logs", state: .off, handler: { item in
+            self.textLogView.isHidden = !self.textLogView.isHidden
+            self.setupMainMenu()
+        }))
+#if false
+        var str: String
+        switch self.sceneViewMode {
+        case 0:
+            str = "Show Scene View"
+        case 1:
+            str = "Maximize Scene View"
+        default:
+            str = "Hide Scene View"
+        }
+        options.append(UIAction(title: str, state: .off, handler: { item in
+            self.toggleSceneViewMode()
+            self.setupMainMenu()
+        }))
+        if self.cmdCapturePointCloud == 0 {
+            str = "Start Point Cloud Capture"
+        } else {
+            str = "Stop Point Cloud Capture"
+        }
+        options.append(UIAction(title: str, state: .off, handler: { _ in
+            self.togglePointCloudCapture()
+            self.setupMainMenu()
+        }))
+        options.append(UIAction(title: "Capture a Point Cloud", state: .off, handler: { _ in
+            self.captureOnePointCloud()
+        }))
+        options.append(UIAction(title: "Step Forward Point Cloud", state: .off, handler: { _ in
+            self.stepPointCloud(forward: true)
+        }))
+        options.append(UIAction(title: "Step Backward Point Cloud", state: .off, handler: { _ in
+            self.stepPointCloud(forward: false)
+        }))
+#endif
+        if self.depthDataFilter {
+            str = "Disable Depth Data Filter"
+        } else {
+            str = "Enable Depth Data Filter"
+        }
+        options.append(UIAction(title: str, state: .off, handler: { _ in
+            self.depthDataFilter = !self.depthDataFilter
+            self.setupMainMenu()
+            self.sessionQueue.async {
+                _ = self.selectCamera()
             }
-        })
-        options.append(item)
-        item = UIAction(title: "Toggle Scene View", state: .off, handler: { _ in
-            DispatchQueue.main.async {
-                self.sceneView.isHidden = !self.sceneView.isHidden
-            }
-        })
-        options.append(item)
-        item = UIAction(title: "Capture Point Cloud", state: .off, handler: { _ in
-            self.capturePointCloud()
-        })
-        options.append(item)
-        item = UIAction(title: "Reset Scene View", state: .off, handler: { _ in
+        }))
+#if false
+        options.append(UIAction(title: "Reset Scene View", state: .off, handler: { _ in
             self.resetPointCloud()
-        })
-        options.append(item)
-        let menu = UIMenu(title: "vipl", children: options)
+        }))
+#endif
+        options.append(UIAction(title: (self.poser.logFunc == nil ? "Show" : "Hide") + " Movenet Score", state: .off, handler: { _ in
+            self.poser.logFunc = self.poser.logFunc == nil ? self.log : nil
+            self.setupMainMenu()
+        }))
 
+        let menu = UIMenu(title: "vipl", children: options)
         menuButton.showsMenuAsPrimaryAction = true
         menuButton.menu = menu
     }
@@ -781,17 +883,19 @@ extension CaptureViewController {
         self.selectedMovieMode10BitDeviceFormat = nil
 
         guard let chosenCamera = self.chosenCamera else { return .configurationFailed }
-        let videoDeviceInput: AVCaptureDeviceInput!
-        do {
-            videoDeviceInput = try CaptureHelper.getCaptureDeviceInput(cam: chosenCamera)
-        } catch {
-            print("Cannot find camera: \(error.localizedDescription)")
-            return .configurationFailed
-        }
         session.beginConfiguration()
         if self.videoDeviceInput != nil {
             NotificationCenter.default.removeObserver(self, name: .AVCaptureDeviceSubjectAreaDidChange, object: self.videoDeviceInput.device)
             self.session.removeInput(self.videoDeviceInput)
+        }
+
+        let videoDeviceInput: AVCaptureDeviceInput!
+        do {
+            videoDeviceInput = try CaptureHelper.getCaptureDeviceInput(cam: chosenCamera)
+        } catch {
+            self.session.commitConfiguration()
+            print("Cannot find camera: \(error.localizedDescription)")
+            return .configurationFailed
         }
 
         if self.session.canAddInput(videoDeviceInput) {
@@ -801,6 +905,18 @@ extension CaptureViewController {
         } else {
             self.session.addInput(self.videoDeviceInput)
         }
+
+        let device = videoDeviceInput.device
+        try? device.lockForConfiguration()
+        device.activeFormat = chosenCamera.format
+        device.activeVideoMinFrameDuration = CMTimeMake(value: 1, timescale: Int32(chosenCamera.frameRate))
+        device.activeVideoMaxFrameDuration = CMTimeMake(value: 1, timescale: Int32(chosenCamera.frameRate))
+        if chosenCamera.depthDataFormat != nil {
+            device.activeDepthDataFormat = chosenCamera.depthDataFormat
+            device.activeDepthDataMinFrameDuration = CMTimeMake(value: 1, timescale: Int32(chosenCamera.frameRate))
+        }
+        device.unlockForConfiguration()
+
         if let connection = self.videoOutput?.connection(with: .video) {
             self.selectedMovieMode10BitDeviceFormat = self.tenBitVariantOfFormat(activeFormat: self.videoDeviceInput.device.activeFormat)
 
@@ -1005,6 +1121,11 @@ extension CaptureViewController {
                     } else {
                         timer.invalidate()
                     }
+                } else if let pointCloudOut = self.pointCloudOut {
+                    let duration = pointCloudOut.recordedDuration()
+                    let minutes = Int(duration) / 60
+                    let seconds = Int(duration) % 60
+                    self.durationLabel.text = String(format: "%02d:%02d", minutes, seconds)
                 } else {
                     timer.invalidate()
                 }
@@ -1019,7 +1140,13 @@ extension CaptureViewController {
                 UIApplication.shared.endBackgroundTask(currentBackgroundRecordingID)
             }
         }
-        let url = URL(fileURLWithPath: self.getNextFileName())
+        let url: URL
+        if PointCloudRecorder.isMovieFile(self.tmpMovieUrl!.path) {
+            url = URL(fileURLWithPath: self.getNextFileName(ext: "moz"))
+        } else {
+            url = URL(fileURLWithPath: self.getNextFileName(ext: "mov"))
+        }
+
         // TODO: error handling
         try? FileManager.default.moveItem(at: self.tmpMovieUrl!, to: url)
         self.capturedMovieUrl = url
@@ -1051,7 +1178,28 @@ extension CaptureViewController {
                                     transform = CGAffineTransform(-1, 0, 0, 1, CGFloat(CVPixelBufferGetWidth(pixelBuffer)), 0)
                                 }
                             }
-                            poser.runModel(assetId: nil, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: transform!, time: CMTime.zero)
+                            poser.runModel(assetId: nil, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: transform!, time: CMTime.zero, freeze: false) { _ in }
+
+                            /* TODO: autofocus on found figure
+                             { (person) in
+                                guard let person = person else { return }
+                                var leftHip, rightHip: KeyPoint?
+                                for p in person.keyPoints {
+                                    if p.bodyPart == .leftHip {
+                                        leftHip = p
+                                    } else if p.bodyPart == .rightHip {
+                                        rightHip = p
+                                    }
+                                }
+                                if let leftHip = leftHip,
+                                   let rightHip = rightHip {
+                                    let pt = CGPoint(x: (leftHip.coordinate.x + rightHip.coordinate.x), y: (leftHip.coordinate.y + rightHip.coordinate.y))
+                                    DispatchQueue.main.async {
+                                        self.mayFocus(point: pt)
+                                    }
+                                }
+                            }
+                             */
                         }
                     }
                 }
@@ -1066,15 +1214,9 @@ extension CaptureViewController {
 
         if let syncedDepthData = synchronizedDataCollection.synchronizedData(for: self.depthDataOutput) as? AVCaptureSynchronizedDepthData,
            let videoData = synchronizedDataCollection.synchronizedData(for: self.videoOutput) as? AVCaptureSynchronizedSampleBufferData {
-            if self.cmdCapturePointCloud == 1 && !videoData.sampleBufferWasDropped && !syncedDepthData.depthDataWasDropped,
-               let image = CMSampleBufferGetImageBuffer(videoData.sampleBuffer) {
-                // TODO: if it's the front camera, depth data is mirrored, but the image is not.
-                let depthData = syncedDepthData.depthData
-                if let ptcld = PointCloud.capturePointCloud(depthData: depthData,   image: (!self.isMirrored ? image : image.mirrored())!, depthTrunc: 0) {
-                    self.addPointCloud(ptcld: ptcld)
-                }
+            if !syncedDepthData.depthDataWasDropped && !videoData.sampleBufferWasDropped && self.pointCloudOut != nil {
+                self.appendPointCloud(depthData: syncedDepthData.depthData, pixelData: CMSampleBufferGetImageBuffer(videoData.sampleBuffer)!, time: CMSampleBufferGetPresentationTimeStamp(videoData.sampleBuffer))
             }
-            self.cmdCapturePointCloud = 0
         }
 
         /*
@@ -1165,27 +1307,161 @@ extension CaptureViewController {
         sceneView.allowsCameraControl = true
     }
 
-    func resetPointCloud() {
-        if let scene = self.sceneView.scene {
-            for i in scene.rootNode.childNodes {
-                if i.name == "captured-node" {
-                    i.removeFromParentNode()
-                }
+    func toggleSceneViewMode() {
+        sceneViewMode = (sceneViewMode + 1) % 3
+        refreshSceneView()
+    }
+
+    func refreshSceneView() {
+        let sliderHeight = CGFloat(40), sliderMargin = CGFloat(0)
+
+        switch sceneViewMode {
+        case 0:     // hidden
+            self.sceneView.isHidden = true
+            self.rangeSlider.isHidden = true
+        case 1:     // 1/3 size, record mode
+            self.sceneView.isHidden = false
+            self.rangeSlider.isHidden = false
+            if view.bounds.width < view.bounds.height {
+                self.sceneView.frame.size.width = view.bounds.width * 2 / 5
+                self.sceneView.frame.size.height = view.bounds.height * self.sceneView.frame.size.width / view.bounds.width
+            } else {
+                self.sceneView.frame.size.height = view.bounds.height * 2 / 5
+                self.sceneView.frame.size.width = view.bounds.width * self.sceneView.frame.size.height / view.bounds.height
             }
+            self.sceneView.frame.origin.y = self.xButton.frame.origin.y + self.xButton.frame.height
+            self.sceneView.frame.origin.x = view.frame.width - view.safeAreaInsets.right - self.sceneView.frame.width
+        default:    // full size, play mode
+            self.sceneView.isHidden = false
+            self.rangeSlider.isHidden = false
+            self.sceneView.frame.origin = CGPoint(x: 0, y: 0)
+            self.sceneView.frame.size = self.previewView.frame.size
+        }
+
+        let x = self.sceneView.frame.origin.x + CGFloat(sliderMargin)
+        let y = self.sceneView.frame.origin.y + self.sceneView.frame.size.height - sliderHeight
+        self.rangeSlider.frame = CGRect(x: x, y: y, width: self.sceneView.frame.size.width - CGFloat(2 * sliderMargin), height: CGFloat(sliderHeight))
+    }
+
+    func resetPointCloud() {
+        DispatchQueue.main.async {
+            self.pointClouds?.clear()
+            self.pointClouds?.showFrame()
         }
     }
 
-    func capturePointCloud() {
-        self.cmdCapturePointCloud = 1
+    func togglePointCloudCapture() {
+        if self.movieOut != nil {
+            return
+        } else if let pointCloudOut = self.pointCloudOut {
+            pointCloudOut.close()
+            self.pointCloudOut = nil
+            self.onStopRecording()
+        } else {
+            record_stop("start")
+        }
+#if false
+        if self.cmdCapturePointCloud == 0 {
+            pointClouds?.startRecording()
+            self.cmdCapturePointCloud = 1
+            self.durationLabel.isHidden = false
+        } else {
+            pointClouds?.stopRecording()
+            self.cmdCapturePointCloud = 0
+            self.durationLabel.isHidden = true
+            self.stepPointCloud(forward: true)
+            self.rangeSlider.min = 0
+            self.rangeSlider.lowerBound = 0
+            self.rangeSlider.max = CGFloat((pointClouds?.count ?? 1) - 1)
+            self.rangeSlider.upperBound = self.rangeSlider.max
+            self.rangeSlider.thumb = 0
+        }
+#endif
     }
 
-    func addPointCloud(ptcld: PointCloud) {
-        DispatchQueue.main.async {
-            let node = ptcld.toSCNNode()
-            node.name = "captured-node"
-            node.geometry?.firstMaterial?.lightingModel = .constant
+    func captureOnePointCloud() {
+        if self.cmdCapturePointCloud == 0 {
+            pointClouds?.startRecording()
+        }
+        self.durationLabel.isHidden = true
+        self.cmdCapturePointCloud = 2
+    }
 
-            self.sceneView.scene?.rootNode.addChildNode(node)
+    func stepPointCloud(forward: Bool) {
+        guard let pointClouds = self.pointClouds else { return }
+        if forward {
+            (_, _) = pointClouds.seek(frame: pointClouds.currentFrame+1)
+        } else {
+            (_, _) = pointClouds.seek(frame: pointClouds.currentFrame-1)
+        }
+        DispatchQueue.main.async {
+            let frame = pointClouds.currentFrame
+            let count = pointClouds.count
+            let duration = pointClouds.duration
+            pointClouds.showFrame()
+            self.log("\(frame)/\(count) \(duration.toDurationString(withSubSeconds: true))")
+        }
+    }
+
+    func appendPointCloudOld(depthData: AVDepthData, pixelBuffer: CVPixelBuffer, time: CMTime) {
+        guard let pointClouds = self.pointClouds,
+              let ptcld = PointCloud2.capture(depthData: depthData, colors: self.isMirrored ? pixelBuffer.mirrored()! : pixelBuffer) else {
+            return
+        }
+        pointClouds.append(item: ptcld, time: time)
+        let showPointCloud = self.cmdCapturePointCloud == 2
+        if self.cmdCapturePointCloud == 2 {
+            self.cmdCapturePointCloud = 0
+        }
+        DispatchQueue.main.async {
+            let count = pointClouds.count
+            let duration = pointClouds.duration
+            if showPointCloud {
+                pointClouds.showFrame()
+                self.rangeSlider.min = 0
+                self.rangeSlider.lowerBound = 0
+                self.rangeSlider.max = CGFloat(pointClouds.count-1)
+                self.rangeSlider.upperBound = self.rangeSlider.max
+                self.rangeSlider.thumb = CGFloat(pointClouds.count-1)
+            }
+            self.durationLabel.text = "\(count) \(duration.toDurationString(withSubSeconds: false))"
+            self.log(self.durationLabel.text!)
+        }
+    }
+
+    func appendPointCloud(depthData: AVDepthData, pixelData: CVPixelBuffer, time: CMTime) {
+        guard let pointCloudOut = self.pointCloudOut else { return }
+        var pixels, depths: CVPixelBuffer
+        pixels = pixelData
+        depths = depthData.depthDataMap
+        if pixels.size.width != depths.size.width {
+            pixels = pixels.resized(to: depths.size)!
+        }
+        if self.isMirrored {
+            pixels = pixels.mirrored()!
+        }
+        guard var depths = depths.toFloats(),
+              var colors = pixels.toBytes(),
+              let cameraCalibrationData = depthData.cameraCalibrationData else { return }
+        let width = CVPixelBufferGetWidth(pixels)
+        let height = CVPixelBufferGetHeight(pixels)
+        let info = PointCloud.getFrameCalibrationInfo(calibrationData: cameraCalibrationData, width: width, height: height, camera: nil)
+        let jsonInfo = info.toJson()
+
+        pointCloudOut.record(time.seconds, info: jsonInfo, count: Int32(width * height), depths: &(depths), colors: &(colors))
+    }
+
+    @objc func rangeSliderValueChanged(_ rangeSlider: RangeSlider) {
+        if self.pointClouds?.isRecording ?? true {
+            return
+        }
+        switch rangeSlider.active {
+        case .thumb:
+            let ix = Int(rangeSlider.thumb)
+            _ = self.pointClouds?.seek(frame: ix)
+            self.pointClouds?.showFrame()
+        default:
+            break
         }
     }
 }

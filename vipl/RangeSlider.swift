@@ -111,7 +111,7 @@ class RangeSlider: UIControl {
     }
     
     func positionForValue(_ value: CGFloat) -> CGFloat {
-        return bounds.width * value / max
+        return bounds.width * value / (max == 0 ? 1 : max)
     }
 
     private func thumbOriginForValue(_ value: CGFloat, _ img: UIImage) -> CGPoint {

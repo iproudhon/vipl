@@ -111,7 +111,7 @@ extension ViewController {
             } else {
                 guard let url = url else { return }
                 DispatchQueue.main.async {
-                    controller.playUrl(url: url)
+                    controller.load(url: url)
                 }
             }
         }

@@ -29,6 +29,11 @@
 		85169D4D294AA664007C081F /* CaptureView.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 85169D4C294AA664007C081F /* CaptureView.storyboard */; };
 		85169D4F294AA8EB007C081F /* CapturePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85169D4E294AA8EB007C081F /* CapturePreviewView.swift */; };
 		85169D51294AAE71007C081F /* CaptureViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85169D50294AAE71007C081F /* CaptureViewController.swift */; };
+		852AA713296CAB9000107AF7 /* CMTime+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 852AA712296CAB9000107AF7 /* CMTime+Extension.swift */; };
+		853F4D75296A861D0093C3AF /* PointCloudPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 853F4D74296A861D0093C3AF /* PointCloudPlayer.swift */; };
+		853F4D77296A91210093C3AF /* RingBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 853F4D76296A91210093C3AF /* RingBuffer.swift */; };
+		857D12B3296EB55C006A8BE5 /* PointCloudRecorder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 857D12B2296EB55C006A8BE5 /* PointCloudRecorder.cpp */; };
+		857D12B8296F394F006A8BE5 /* PointCloudRecorderObjc.mm in Sources */ = {isa = PBXBuildFile; fileRef = 857D12B7296F394F006A8BE5 /* PointCloudRecorderObjc.mm */; };
 		85A501E329627223005F2382 /* Cache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A501E229627223005F2382 /* Cache.swift */; };
 		85A501E52963E383005F2382 /* CaptureMovieFileOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A501E42963E383005F2382 /* CaptureMovieFileOutput.swift */; };
 		85A501E7296536A0005F2382 /* AVAsset+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A501E6296536A0005F2382 /* AVAsset+Extension.swift */; };
@@ -138,6 +143,13 @@
 		85169D4C294AA664007C081F /* CaptureView.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = CaptureView.storyboard; sourceTree = "<group>"; };
 		85169D4E294AA8EB007C081F /* CapturePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturePreviewView.swift; sourceTree = "<group>"; };
 		85169D50294AAE71007C081F /* CaptureViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureViewController.swift; sourceTree = "<group>"; };
+		852AA712296CAB9000107AF7 /* CMTime+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CMTime+Extension.swift"; sourceTree = "<group>"; };
+		853F4D74296A861D0093C3AF /* PointCloudPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudPlayer.swift; sourceTree = "<group>"; };
+		853F4D76296A91210093C3AF /* RingBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingBuffer.swift; sourceTree = "<group>"; };
+		857D12B1296EB55B006A8BE5 /* PointCloudRecorder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PointCloudRecorder.h; sourceTree = "<group>"; };
+		857D12B2296EB55C006A8BE5 /* PointCloudRecorder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PointCloudRecorder.cpp; sourceTree = "<group>"; };
+		857D12B4296F353A006A8BE5 /* PointCloudRecorderObjc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PointCloudRecorderObjc.h; sourceTree = "<group>"; };
+		857D12B7296F394F006A8BE5 /* PointCloudRecorderObjc.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = PointCloudRecorderObjc.mm; sourceTree = "<group>"; };
 		85A501E229627223005F2382 /* Cache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cache.swift; sourceTree = "<group>"; };
 		85A501E42963E383005F2382 /* CaptureMovieFileOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureMovieFileOutput.swift; sourceTree = "<group>"; };
 		85A501E6296536A0005F2382 /* AVAsset+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AVAsset+Extension.swift"; sourceTree = "<group>"; };
@@ -298,6 +310,8 @@
 				85EB33EF2968E97B00604B6C /* minMaxFromBuffer.h */,
 				85EB33F02968E97B00604B6C /* minMaxFromBuffer.m */,
 				85EB33EE2968E97A00604B6C /* vipl-Bridging-Header.h */,
+				853F4D76296A91210093C3AF /* RingBuffer.swift */,
+				852AA712296CAB9000107AF7 /* CMTime+Extension.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -327,7 +341,6 @@
 		85AC1B07293EBAEE00CA4556 /* vipl */ = {
 			isa = PBXGroup;
 			children = (
-				85EB33F429690F4C00604B6C /* PointCloud */,
 				85AC1B7A2947BECA00CA4556 /* Views */,
 				85AC1B08293EBAEE00CA4556 /* AppDelegate.swift */,
 				85AC1B0A293EBAEE00CA4556 /* SceneDelegate.swift */,
@@ -343,12 +356,13 @@
 				851040D52951B1FE00320EC7 /* RangeSlider.swift */,
 				85AC1B11293EBAEF00CA4556 /* Assets.xcassets */,
 				85AC1B16293EBAEF00CA4556 /* Info.plist */,
+				85C8C68A295FCEAA00012236 /* CoreMLHelpers */,
 				85C8C655295FACF700012236 /* DeepLab */,
+				85EB33F429690F4C00604B6C /* PointCloud */,
 				851040DF295C0C1400320EC7 /* Poser */,
 				85104100295F5F3A00320EC7 /* PoseNet */,
 				85EB33E72968E88100604B6C /* Shaders */,
 				85A501E12962720D005F2382 /* Utils */,
-				85C8C68A295FCEAA00012236 /* CoreMLHelpers */,
 			);
 			path = vipl;
 			sourceTree = "<group>";
@@ -427,7 +441,12 @@
 		85EB33F429690F4C00604B6C /* PointCloud */ = {
 			isa = PBXGroup;
 			children = (
+				857D12B1296EB55B006A8BE5 /* PointCloudRecorder.h */,
+				857D12B2296EB55C006A8BE5 /* PointCloudRecorder.cpp */,
+				857D12B4296F353A006A8BE5 /* PointCloudRecorderObjc.h */,
+				857D12B7296F394F006A8BE5 /* PointCloudRecorderObjc.mm */,
 				85EB33F529690F5D00604B6C /* PointCloud.swift */,
+				853F4D74296A861D0093C3AF /* PointCloudPlayer.swift */,
 			);
 			path = PointCloud;
 			sourceTree = "<group>";
@@ -607,20 +626,24 @@
 			buildActionMask = 2147483647;
 			files = (
 				85C8C646295F76F300012236 /* PoseBuilder+Multiple.swift in Sources */,
+				853F4D75296A861D0093C3AF /* PointCloudPlayer.swift in Sources */,
 				85169D4F294AA8EB007C081F /* CapturePreviewView.swift in Sources */,
 				85C8C649295F76F300012236 /* PoseBuilder.swift in Sources */,
 				85C8C6A1295FCECD00012236 /* UIImage+Extensions.swift in Sources */,
 				85AC1B0D293EBAEE00CA4556 /* ViewController.swift in Sources */,
+				857D12B3296EB55C006A8BE5 /* PointCloudRecorder.cpp in Sources */,
 				851040D829540F8E00320EC7 /* AVPlayerController.swift in Sources */,
 				85C8C64B295F76F300012236 /* CGImage+Extension.swift in Sources */,
 				85C8C6A5295FCECD00012236 /* Math.swift in Sources */,
 				85EB33ED2968E92D00604B6C /* FilterRenderer.swift in Sources */,
+				852AA713296CAB9000107AF7 /* CMTime+Extension.swift in Sources */,
 				85C8C6AA295FCECD00012236 /* MLMultiArray+Image.swift in Sources */,
 				85169D51294AAE71007C081F /* CaptureViewController.swift in Sources */,
 				85C8C6A7295FCECD00012236 /* CVPixelBuffer+Create.swift in Sources */,
 				851040DC29551E1900320EC7 /* CollectionViewController.swift in Sources */,
 				85C8C6A8295FCECD00012236 /* UIImage+CVPixelBuffer.swift in Sources */,
 				85EB33F32968F85C00604B6C /* AVDepthData+Utils.swift in Sources */,
+				857D12B8296F394F006A8BE5 /* PointCloudRecorderObjc.mm in Sources */,
 				851040F5295C1B4200320EC7 /* CVPixelBuffer+TFLite.swift in Sources */,
 				85C8C69C295FCECD00012236 /* CGImage+RawBytes.swift in Sources */,
 				851040ED295C1B2800320EC7 /* MoveNet.swift in Sources */,
@@ -664,6 +687,7 @@
 				85C8C657295FAD3A00012236 /* DeepLabV3.mlmodel in Sources */,
 				851040FC295D8E0E00320EC7 /* Poser.swift in Sources */,
 				85C8C64A295F76F300012236 /* CGPoint+Extension.swift in Sources */,
+				853F4D77296A91210093C3AF /* RingBuffer.swift in Sources */,
 				85C8C647295F76F300012236 /* PoseBuilderConfiguration.swift in Sources */,
 				85C8C64E295F76F300012236 /* PoseNetInput.swift in Sources */,
 				851040F4295C1B4200320EC7 /* Data+TFLite.swift in Sources */,

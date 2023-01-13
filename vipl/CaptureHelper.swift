@@ -109,11 +109,6 @@ class CaptureHelper {
         guard let device = AVCaptureDevice.default(cam.deviceType, for: .video, position: cam.position) else {
             throw NSError(domain: "user", code: 0, userInfo: ["message": "device type not found"])
         }
-        try device.lockForConfiguration()
-        device.activeFormat = cam.format
-        device.activeVideoMinFrameDuration = CMTimeMake(value: 1, timescale: Int32(cam.frameRate))
-        device.activeVideoMaxFrameDuration = CMTimeMake(value: 1, timescale: Int32(cam.frameRate))
-        device.unlockForConfiguration()
         let videoDeviceInput = try AVCaptureDeviceInput(device: device)
         return videoDeviceInput
     }

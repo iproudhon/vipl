@@ -65,13 +65,17 @@ class SwingItem {
     var meta: String?
     var dimensions: CGSize?
     var thumbnail: UIImage?
-    
-    init(url: URL?, creationDate: Date?, meta: String?, dimensions: CGSize?, thumbnail: UIImage?) {
+    var description: String?
+    var duration: CMTime?
+
+    init(url: URL?, creationDate: Date?, meta: String?, dimensions: CGSize?, thumbnail: UIImage?, description: String?, duration: CMTime?) {
         self.url = url
         self.creationDate = creationDate
         self.meta = meta
         self.dimensions = dimensions
         self.thumbnail = thumbnail
+        self.description = description
+        self.duration = duration
     }
 }
 
@@ -261,13 +265,13 @@ extension CollectionViewController {
                 let url = dir.appendingPathComponent(item)
                 let ext = url.pathExtension
                 let uti = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, ext as CFString, nil)
-                if UTTypeConformsTo((uti?.takeRetainedValue())!, kUTTypeMovie) {
-                    let (creationDate, dimensions) = CollectionViewController.getCreationDateAndDimensions(url: url)
-                    if creationDate == nil {
+                if UTTypeConformsTo((uti?.takeRetainedValue())!, kUTTypeMovie) || ext == "moz" {
+                    let swingItem = SwingItem(url: url, creationDate: nil, meta: nil, dimensions: nil, thumbnail: nil, description: nil, duration: nil)
+                    CollectionViewController.getSwingInfo(item: swingItem, url: url)
+                    if swingItem.creationDate == nil {
                         os_log("invalid movie file: \(url.path)")
                         continue
                     }
-                    let swingItem = SwingItem(url: url, creationDate: creationDate, meta: "", dimensions: dimensions, thumbnail: nil)
                     swingItems.append(swingItem)
                 }
             }
@@ -284,30 +288,73 @@ extension CollectionViewController {
     }
     
     static func getThumbnail(url: URL) -> UIImage? {
-        let asset = AVAsset(url: url)
-        let assetImgGenerate = AVAssetImageGenerator(asset: asset)
-        assetImgGenerate.appliesPreferredTrackTransform = true
-        let pointOfTime = CMTimeMakeWithSeconds(0.1, preferredTimescale: 600)
-        do {
-            let img = try assetImgGenerate.copyCGImage(at: pointOfTime, actualTime: nil)
-            return UIImage(cgImage: img)
-        } catch {
-            print("\(error.localizedDescription)")
+        if url.pathExtension != "moz" {
+            let asset = AVAsset(url: url)
+            let assetImgGenerate = AVAssetImageGenerator(asset: asset)
+            assetImgGenerate.appliesPreferredTrackTransform = true
+            let pointOfTime = CMTimeMakeWithSeconds(0.1, preferredTimescale: 600)
+            do {
+                let img = try assetImgGenerate.copyCGImage(at: pointOfTime, actualTime: nil)
+                return UIImage(cgImage: img)
+            } catch {
+                print("\(error.localizedDescription)")
+                return nil
+            }
+        } else {
+            let r = PointCloudRecorder()
+            if !r.open(url.path, forWrite: false) {
+                return nil
+            }
+            if let info = r.info(),
+               let calibrationInfo = FrameCalibrationInfo.fromJson(data: info),
+               let colors = r.colors(),
+               let cgImg = PointCloud2.bytesToImage(width: calibrationInfo.width, height: calibrationInfo.height, colors: colors) {
+                return UIImage(cgImage: cgImg)
+            }
             return nil
         }
     }
 
-    static func getCreationDateAndDimensions(url: URL) -> (Date?, CGSize?) {
-        let asset = AVAsset(url: url)
-        let date = asset.creationDate?.value as? Date
-        let track = asset.tracks(withMediaType: .video).first
-        var size = CGSize(width: 1, height: 1)
-        if let track = track {
-            size = CGSizeApplyAffineTransform(track.naturalSize, track.preferredTransform)
+    static func getSwingInfo(item: SwingItem, url: URL) {
+        if url.pathExtension != "moz" {
+            let asset = AVAsset(url: url)
+            let date = asset.creationDate?.value as? Date
+            let track = asset.tracks(withMediaType: .video).first
+            var size = CGSize(width: 1, height: 1)
+            if let track = track {
+                size = CGSizeApplyAffineTransform(track.naturalSize, track.preferredTransform)
+            }
+            size.width = abs(size.width)
+            size.height = abs(size.height)
+
+            item.dimensions = size
+            item.creationDate = date
+            item.duration = asset.duration
+            for i in asset.metadata {
+                if String(i.key as? NSString ?? "") == String(AVMetadataKey.quickTimeMetadataKeyDescription as NSString),
+                   let description = i.value as? NSString {
+                    item.description = String(description)
+                }
+            }
+        } else {
+            let r = PointCloudRecorder()
+            if !r.open(url.path, forWrite: false) {
+                return
+            }
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey:Any],
+               let creationDate = attrs[.creationDate] as? Date {
+                item.creationDate = creationDate
+            }
+            item.duration = CMTime(seconds: r.recordedDuration(), preferredTimescale: 600)
+            item.description = url.lastPathComponent
+
+            if let info = r.info(),
+               let calibrationInfo = FrameCalibrationInfo.fromJson(data: info) {
+                item.dimensions = CGSize(width: calibrationInfo.width, height: calibrationInfo.height)
+            }
         }
-        size.width = abs(size.width)
-        size.height = abs(size.height)
-        return (date, size)
+
+        return
     }
 }
 
@@ -385,7 +432,7 @@ extension CollectionViewController {
             } else {
                 guard let url = url else { return }
                 DispatchQueue.main.async {
-                    controller.playUrl(url: url)
+                    controller.load(url: url)
                 }
             }
         }
@@ -409,9 +456,11 @@ extension CollectionViewController {
         cell.collectionViewController = self
         
         let ix = indexPath[1]
-        cell.label.isHidden = true
         cell.img.frame.size = cell.frame.size
         cell.img.frame.origin = CGPoint(x: 0, y: 0)
+        cell.label.frame = CGRect(x: 0, y: cell.frame.size.height -  cell.label.frame.size.height, width: cell.frame.size.width, height: cell.label.frame.size.height)
+        cell.label.isHidden = false
+        cell.label.text = (swingItems?[ix].duration?.toDurationString(withSubSeconds: true) ?? "") + " " + (swingItems?[ix].description ?? "")
         cell.swingItem = swingItems?[ix]
         DispatchQueue.main.async {
             if let swingItem = cell.swingItem, let url = swingItem.url {

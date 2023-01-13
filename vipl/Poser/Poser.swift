@@ -25,6 +25,16 @@ class Poser {
 
     var isRunning = false
 
+    class Task {
+        var assetId: String?
+        var pixelBuffer: CVPixelBuffer?
+        var transform: CGAffineTransform?
+        var time: CMTime?
+        var freeze: Bool?
+        var completionHandler: ((Task?, Person?) -> Void)?
+    }
+    var task: Task?
+
     func updateModel(modelType: ModelType = .movenetThunder) {
         queue.async {
             self.modelType = modelType
@@ -68,42 +78,77 @@ class Poser {
         return outPixelBuffer
     }
 
-    func runModel(assetId: String?, targetView: OverlayView, pixelBuffer: CVPixelBuffer, transform: CGAffineTransform, time: CMTime, freeze: Bool = false) {
+    func runInner() {
         objc_sync_enter(self)
-        if isRunning {
+        guard let estimator = poseEstimator,
+              let task = self.task,
+              let pixelBuffer = task.pixelBuffer,
+              let time = task.time else {
+            self.task = nil
             objc_sync_exit(self)
             return
         }
-        isRunning = true
+        self.task = nil
         objc_sync_exit(self)
+        defer { self.isRunning = false }
 
-        guard let estimator = poseEstimator,
-              let outPixelBuffer = transform == CGAffineTransformIdentity ? pixelBuffer : rotatePixelBuffer(pixelBuffer: pixelBuffer, transform: transform) else {
-            isRunning = false
-            return
+        let result: Person
+        let id = "\(task.assetId ?? ""):pose:\(Int64(time.seconds * 1000))"
+        if task.assetId != nil, let cached = Cache.Default.get(id) {
+            result = cached as! Person
+        } else {
+            guard let (uncached, _) = try? estimator.estimateSinglePose(on: pixelBuffer) else {
+                os_log("Error running pose estimation.", type: .error)
+                return
+            }
+            result = uncached
+            if task.assetId != nil {
+                Cache.Default.set(id, result)
+            }
         }
-        queue.async {
-            defer { self.isRunning = false }
 
-            let result: Person
-            let id = "\(assetId ?? ""):pose:\(Int(time.seconds * 100))"
-            if assetId != nil, let cached = Cache.Default.get(id) {
-                result = cached as! Person
-            } else {
-                guard let (uncached, _) = try? estimator.estimateSinglePose(on: outPixelBuffer) else {
-                    os_log("Error running pose estimation.", type: .error)
-                    return
+        task.completionHandler?(task, result)
+
+        objc_sync_enter(self)
+        let more = self.task != nil
+        objc_sync_exit(self)
+        if more {
+            runInner()
+        }
+    }
+
+    func runModel(assetId: String?, targetView: OverlayView, pixelBuffer: CVPixelBuffer, transform: CGAffineTransform, time: CMTime, freeze: Bool = false, completionHandler: @escaping (Person?) -> Void) {
+        let task = Task()
+        task.assetId = assetId
+        task.transform = transform
+        task.pixelBuffer = transform == CGAffineTransformIdentity ? pixelBuffer : pixelBuffer.transformed(transform: transform)
+        task.time = time
+        task.freeze = freeze
+        task.completionHandler = { task, result in
+            guard let task = task,
+                  let result = result else {
+                return
+            }
+            var valid = result.score >= self.minimumScore
+            for kp in result.keyPoints {
+                if !valid {
+                    break
                 }
-                result = uncached
-                if assetId != nil {
-                    Cache.Default.set(id, result)
+                switch kp.bodyPart {
+                case .leftAnkle, .leftKnee, .leftHip, .rightAnkle, .rightKnee, .rightHip:
+                    if kp.score < self.minimumScore {
+                        valid = false
+                    }
+                default:
+                    break
                 }
             }
-            if !freeze {
-                targetView.setPose(result.score < self.minimumScore ? nil : result, time)
+
+            if !task.freeze! {
+                targetView.setPose(valid ? result : nil, task.time!)
             } else {
-                if result.score >= self.minimumScore {
-                    targetView.pushPose(pose: result, snap: nil, time: time)
+                if valid {
+                    targetView.pushPose(pose: result, snap: nil, time: task.time!)
                 }
             }
             if let log = self.logFunc {
@@ -114,8 +159,24 @@ class Poser {
                 log("%%%: " + msg)
             }
             DispatchQueue.main.async {
-                targetView.draw(size: outPixelBuffer.size)
+                targetView.draw(size: task.pixelBuffer!.size)
             }
+            if valid {
+                completionHandler(result)
+            }
+        }
+
+        objc_sync_enter(self)
+        self.task = task
+        if isRunning {
+            objc_sync_exit(self)
+            return
+        }
+        isRunning = true
+        objc_sync_exit(self)
+
+        queue.async {
+            self.runInner()
         }
     }
 }
@@ -125,5 +186,5 @@ enum PoserConstants {
   static let defaultDelegate: Delegates = .gpu
   static let defaultModelType: ModelType = .movenetThunder
 
-  static let minimumScore: Float32 = 0.2
+  static let minimumScore: Float32 = 0.3
 }

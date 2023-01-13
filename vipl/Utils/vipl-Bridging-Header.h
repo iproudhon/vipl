@@ -3,3 +3,4 @@
 //
 
 #import "minMaxFromBuffer.h"
+#import "PointCloudRecorderObjc.h"

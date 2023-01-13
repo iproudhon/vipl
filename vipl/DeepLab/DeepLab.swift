@@ -150,7 +150,7 @@ class DeepLab {
         objc_sync_exit(self)
         defer { self.isRunning = false }
 
-        let id = "\(task.assetId ?? ""):mask:\(Int(time.seconds * 100))"
+        let id = "\(task.assetId ?? ""):mask:\(Int64(time.seconds * 1000))"
         guard let resizedImage = pixelBuffer.resized(to: CGSize(width: self.width, height: self.height)) else { return }
 
         let cgMask: CGImage

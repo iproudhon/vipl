@@ -23,6 +23,10 @@
                                 <rect key="frame" x="0.0" y="48" width="414" height="672"/>
                                 <autoresizingMask key="autoresizingMask"/>
                                 <subviews>
+                                    <sceneKitView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Tjq-f0-DmK">
+                                        <rect key="frame" x="87" y="272" width="240" height="128"/>
+                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                    </sceneKitView>
                                     <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="tXC-No-uHB" customClass="OverlayView" customModule="vipl" customModuleProvider="target">
                                         <rect key="frame" x="0.0" y="0.0" width="414" height="672"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
@@ -58,7 +62,7 @@
                                 <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
                             </textView>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="0:00:0 / 0:00:0 / 0:00:0" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="UUe-ie-eKh">
-                                <rect key="frame" x="269" y="747" width="80" height="20"/>
+                                <rect key="frame" x="269" y="747" width="80" height="149"/>
                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMaxX="YES" heightSizable="YES" flexibleMaxY="YES"/>
                                 <accessibility key="accessibilityConfiguration">
                                     <accessibilityTraits key="traits" staticText="YES" notEnabled="YES"/>
@@ -160,6 +164,7 @@
                         <outlet property="poseButton" destination="npa-ke-Sla" id="9ux-oq-ly5"/>
                         <outlet property="rangeButton" destination="9W0-A1-4BE" id="Fbi-Ca-YBS"/>
                         <outlet property="repeatButton" destination="52I-YU-Rr9" id="suR-oF-SY4"/>
+                        <outlet property="sceneView" destination="Tjq-f0-DmK" id="K9y-jh-guk"/>
                         <outlet property="soundButton" destination="SYf-eu-Gd8" id="bsd-En-iVt"/>
                         <outlet property="textLogView" destination="uit-Y1-4dH" id="8nE-kA-ZcW"/>
                         <outlet property="timeLabel" destination="UUe-ie-eKh" id="AGa-yk-Fzg"/>

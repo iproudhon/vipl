@@ -18,7 +18,7 @@ class Cache {
     }
 
     init() {
-        self.cache.countLimit = 240 * 60 * 60
+        self.cache.countLimit = 240 * 60
     }
 
     func get(_ key: String) -> Any? {

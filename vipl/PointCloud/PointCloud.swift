@@ -360,6 +360,105 @@ end_header
         return data
     }
 
+    public static func getFrameCalibrationInfo(calibrationData: AVCameraCalibrationData, width: Int, height: Int, camera: ARCamera?) -> FrameCalibrationInfo {
+        func getLensDistortionTable(lookupTable: Data) -> [Float] {
+            let count = lookupTable.count / MemoryLayout<Float>.size
+            var table: [Float] = Array(repeating: 0, count: count)
+            _ = table.withUnsafeMutableBytes{lookupTable.copyBytes(to: $0)}
+            return table
+        }
+
+        var info = FrameCalibrationInfo()
+        info.width = width
+        info.height = height
+        info.calibrationIntrinsicMatrix = FrameCalibrationInfo.toFloats(withSimd3x3: calibrationData.intrinsicMatrix)
+        info.calibrationPixelSize = calibrationData.pixelSize
+        info.calibrationIntrinsicMatrixReferenceDimensions = calibrationData.intrinsicMatrixReferenceDimensions
+        info.calibrationLensDistortionCenter = calibrationData.lensDistortionCenter
+        if let table = calibrationData.lensDistortionLookupTable {
+            info.calibrationLensDistortionLookupTable = getLensDistortionTable(lookupTable: table)
+        }
+        if let table = calibrationData.inverseLensDistortionLookupTable {
+            info.calibrationInverseLensDistortionLookupTable = getLensDistortionTable(lookupTable: table)
+        }
+        if let cam = camera {
+            let viewportSize = CGSize(width: cam.imageResolution.width, height: cam.imageResolution.height)
+            let projMatrix = cam.projectionMatrix(for: UIInterfaceOrientation.landscapeRight, viewportSize: viewportSize, zNear: 0.001, zFar: 1000.0)
+            let viewMatrix = cam.viewMatrix(for: UIInterfaceOrientation.landscapeRight)
+
+            info.cameraImageResolution = cam.imageResolution
+            info.cameraTransform = FrameCalibrationInfo.toFloats(withSimd4x4: cam.transform)
+            info.cameraIntrinsics = FrameCalibrationInfo.toFloats(withSimd3x3: cam.intrinsics)
+            info.cameraProjectionMatrix = FrameCalibrationInfo.toFloats(withSimd4x4: projMatrix)
+            info.cameraViewMatrix = FrameCalibrationInfo.toFloats(withSimd4x4: viewMatrix)
+        } else {
+            info.cameraViewMatrix = FrameCalibrationInfo.toFloats(withSimd4x4: matrix_identity_float4x4)
+        }
+
+        return info
+    }
+
+    public static func getCalibrationInfo(calibrationData: AVCameraCalibrationData, width: Int, height: Int, camera: ARCamera?) -> [String:Any] {
+        func getLensDistortionTable(lookupTable: Data) -> [Float] {
+            let count = lookupTable.count / MemoryLayout<Float>.size
+            var table: [Float] = Array(repeating: 0, count: count)
+            _ = table.withUnsafeMutableBytes{lookupTable.copyBytes(to: $0)}
+            return table
+        }
+
+        var info: [String:Any] = [:]
+        info["calibration_data"] = [
+            "intrinsic_matrix" : (0 ..< 3).map{ x in
+                (0 ..< 3).map{ y in calibrationData.intrinsicMatrix[x][y]}
+            },
+            "extrinsic_matrix" : (0 ..< 4).map{ x in
+                (0 ..< 3).map{ y in calibrationData.extrinsicMatrix[x][y]}
+            },
+            "pixel_size" : calibrationData.pixelSize,
+            "intrinsic_matrix_reference_dimensions" : [
+                calibrationData.intrinsicMatrixReferenceDimensions.width,
+                calibrationData.intrinsicMatrixReferenceDimensions.height
+            ],
+            "lens_distortion_center" : [
+                calibrationData.lensDistortionCenter.x,
+                calibrationData.lensDistortionCenter.y
+            ],
+            "lens_distortion_lookup_table" : getLensDistortionTable(
+                lookupTable: calibrationData.lensDistortionLookupTable!
+            ),
+            "inverse_lens_distortion_lookup_table" : getLensDistortionTable(
+                lookupTable: calibrationData.inverseLensDistortionLookupTable!
+            )
+        ]
+        info["width"] = width
+        info["height"] = height
+
+        if let cam = camera {
+            let viewportSize = CGSize(width: cam.imageResolution.width, height: cam.imageResolution.height)
+            let projMatrix = cam.projectionMatrix(for: UIInterfaceOrientation.landscapeRight, viewportSize: viewportSize, zNear: 0.001, zFar: 1000.0)
+            let viewMatrix = cam.viewMatrix(for: UIInterfaceOrientation.landscapeRight)
+            let cameraInfo: [String:Any] = [
+                "imageResolution": [ cam.imageResolution.width, cam.imageResolution.height ],
+                "transform": (0 ..< 4).map{ y in
+                    (0 ..< 4).map{ x in cam.transform[y][x] }
+                },
+                "euler_angles": (0 ..< 3).map { i in cam.eulerAngles[i] },
+                "intrinsics": (0 ..< 3).map{ y in
+                    (0 ..< 3).map{ x in cam.intrinsics[y][x] }
+                },
+                "projection_matrix": (0 ..< 4).map{ y in
+                    (0 ..< 4).map{ x in projMatrix[y][x] }
+                },
+                "view_matrix": (0 ..< 4).map{ y in
+                    (0 ..< 4).map{ x in viewMatrix[y][x] }
+                }
+            ]
+            info["camera"] = cameraInfo
+        }
+
+        return info
+    }
+
     public static func capturePointCloud(depthData: AVDepthData, image: CVPixelBuffer, depthTrunc: Float) -> PointCloud? {
         // frame.camera: ARCamera
         // frame.capturedDepthData: AVDepthData
@@ -400,7 +499,8 @@ end_header
 
         for i in 0..<width*height {
             ptcld.depths[i] = pixels[i]
-            let ix = inverseTable[i]
+            var ix = inverseTable[i]
+            ix = i
             if ix != -1 {   // rectilinear image
                 var z = pixels[ix]
                 if depthTrunc == 0 || z < depthTrunc {
@@ -418,5 +518,123 @@ end_header
 
         CVPixelBufferUnlockBaseAddress(depthData.depthDataMap, .readOnly)
         return ptcld
+    }
+}
+
+class PointCloud2 {
+    var vtxs: [PointCloudVertex]?
+
+    var width: Int = 0
+    var height: Int = 0
+    var fx: Float = 0
+    var fy: Float = 0
+    var cx: Float = 0
+    var cy: Float = 0
+    var depths: [Float]?
+    var colors: [UInt8]?
+
+    private func build() {
+        guard let depths = self.depths,
+              let colors = self.colors else { return }
+
+        var vtxs = [PointCloudVertex]()
+        for ix in 0..<width*height {
+            var z = depths[ix]
+            if z.isNaN {
+                continue
+            }
+            var u = Float(ix % width), v = Float(ix / width)
+            u = Float(width) - u
+            z = -z
+            let pt = simd_float4((u - cx) * z / fx, (v - cy) * z / fy, z, 1.0)
+            let cix = ix * 4
+            let r = colors[cix+0], g = colors[cix+1], b = colors[cix+2]
+            vtxs.append(PointCloudVertex(x: pt[0], y: pt[1], z: pt[2], r: Float(r) / 255.0, g: Float(g) / 255.0, b: Float(b) / 255.0))
+        }
+
+        self.depths = nil
+        self.colors = nil
+        self.vtxs = vtxs
+    }
+
+    public func toSCNNode() -> SCNNode? {
+        if self.vtxs == nil {
+            build()
+        }
+        guard let vtxs = self.vtxs else { return nil }
+        let vertices = NSData(bytes: vtxs, length: MemoryLayout<PointCloudVertex>.size * vtxs.count)
+        let vertexSource = SCNGeometrySource(
+            data: vertices as Data,
+            semantic: SCNGeometrySource.Semantic.vertex,
+            vectorCount: vtxs.count,
+            usesFloatComponents: true,
+            componentsPerVector: 3,
+            bytesPerComponent: MemoryLayout<Float>.size,
+            dataOffset: 0,
+            dataStride: MemoryLayout<PointCloudVertex>.size
+        )
+        let colorSource = SCNGeometrySource(
+            data: vertices as Data,
+            semantic: SCNGeometrySource.Semantic.color,
+            vectorCount: vtxs.count,
+            usesFloatComponents: true,
+            componentsPerVector: 3,
+            bytesPerComponent: MemoryLayout<Float>.size,
+            dataOffset: MemoryLayout<Float>.size * 3,
+            dataStride: MemoryLayout<PointCloudVertex>.size
+        )
+        let element = SCNGeometryElement(
+            data: nil,
+            primitiveType: .point,
+            primitiveCount: vtxs.count,
+            bytesPerIndex: MemoryLayout<Int>.size
+        )
+        element.pointSize = 1
+        element.minimumPointScreenSpaceRadius = 1
+        element.maximumPointScreenSpaceRadius = 7
+        let geom = SCNGeometry(sources: [vertexSource, colorSource], elements: [element])
+        return SCNNode(geometry: geom)
+    }
+
+    public static func capture(depthData: AVDepthData, colors: CVPixelBuffer) -> PointCloud2? {
+        guard let calibrationData = depthData.cameraCalibrationData else { return nil }
+
+        let ptcld = PointCloud2()
+        let intrinsics = calibrationData.intrinsicMatrix
+        let width = CVPixelBufferGetWidth(depthData.depthDataMap)
+        let height = CVPixelBufferGetHeight(depthData.depthDataMap)
+        let ratio = Float(calibrationData.intrinsicMatrixReferenceDimensions.width) / Float(width)
+        ptcld.width = width
+        ptcld.height = height
+        ptcld.fx = intrinsics.columns.0[0] / ratio
+        ptcld.fy = intrinsics.columns.1[1] / ratio
+        ptcld.cx = intrinsics.columns.2[0] / ratio
+        ptcld.cy = intrinsics.columns.2[1] / ratio
+
+        var depths = depthData.depthDataMap
+        if depthData.depthDataType != kCVPixelFormatType_DepthFloat32 {
+            depths = depthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat32).depthDataMap
+        }
+        ptcld.depths = depths.toFloats()
+
+        var resized: CVPixelBuffer = colors
+        if CVPixelBufferGetWidth(resized) != width {
+            guard let resizedImage = colors.resized(to: CGSize(width: width, height: height)) else { return nil }
+            resized = resizedImage
+        }
+        ptcld.colors = resized.toBytes()
+
+        return ptcld
+    }
+
+    public static func bytesToImage(width: Int, height: Int, colors: UnsafeMutablePointer<UInt8>) -> CGImage? {
+        let ctx = CGContext(
+            data: colors,
+            width: width, height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+        return ctx.makeImage()
     }
 }

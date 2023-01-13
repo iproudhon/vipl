@@ -80,11 +80,11 @@ extension AVAsset {
         }
         info["duration"] = String(format: "%.2f", self.duration.seconds)
         for item in self.metadata {
-            let key = String(item.key as! NSString)
+            let key = String(item.key as? NSString ?? "")
             switch key {
             case String(AVMetadataKey.commonKeyCreationDate as NSString), String(AVMetadataKey.quickTimeMetadataKeyCreationDate as NSString):
                 info["creation-date"] = String(item.value as! NSString)
-            case String(AVMetadataKey.commonKeyDescription as NSString):
+            case String(AVMetadataKey.commonKeyDescription as NSString), String(AVMetadataKey.quickTimeMetadataKeyDescription as NSString):
                 info["description"] = String(item.value as! NSString)
             case String(AVMetadataKey.quickTimeMetadataKeyLocationISO6709 as NSString):
                 if item.identifier == AVMetadataIdentifier.quickTimeMetadataLocationISO6709 {
@@ -98,7 +98,16 @@ extension AVAsset {
         }
         var tracksInfo = [String]()
         for track in self.tracks {
-            tracksInfo.append("media-type:\(track.mediaType), dimensions:\(track.naturalSize)")
+            switch track.mediaType {
+            case .video:
+                info["frame-rate"] = "\(Int(track.nominalFrameRate))"
+                info["dimensions"] = "\(Int(track.naturalSize.width))x\(Int(track.naturalSize.height))"
+                tracksInfo.append("media-type: video")
+            case .audio:
+                tracksInfo.append("media-type: audio")
+            default:
+                tracksInfo.append("media-type: \(track.mediaType) \(track.description)")
+            }
         }
         info["tracks"] = tracksInfo
 
