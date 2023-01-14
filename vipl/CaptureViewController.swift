@@ -1425,7 +1425,7 @@ extension CaptureViewController {
         pixels = pixelData
         depths = depthData.depthDataMap
         if pixels.size.width != depths.size.width {
-            pixels = pixels.resized(to: depths.size)!
+            depths = resizePixelBuffer(depths, width: Int(pixels.size.width), height: Int(pixels.size.height))!
         }
         if self.isMirrored {
             depths = depths.mirrored()!
