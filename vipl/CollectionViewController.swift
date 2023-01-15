@@ -476,6 +476,7 @@ extension CollectionViewController {
         }
         
         if !cell.tapRegistered {
+            cell.tapRegistered = true
             cell.addGestureRecognizer(UITapGestureRecognizer(target: cell, action: #selector(cell.tap(_:))))
         }
         return cell

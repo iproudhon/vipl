@@ -9,6 +9,7 @@ import UIKit
 import AVFoundation
 
 class PlayerView: UIView {
+    var controller: PlayerViewController?
     
     var player: AVPlayer? {
         get { playerLayer.player }
@@ -21,5 +22,17 @@ class PlayerView: UIView {
 
     override class var layerClass: AnyClass {
         return AVPlayerLayer.self
+    }
+
+    @objc func tap(_ sender: UITapGestureRecognizer) {
+        controller?.tap(sender)
+    }
+
+    @objc func longHold(_ sender: UILongPressGestureRecognizer) {
+        controller?.longHold(sender)
+    }
+
+    @objc func pan(_ sender: UIPanGestureRecognizer) {
+        controller?.pan(sender)
     }
 }

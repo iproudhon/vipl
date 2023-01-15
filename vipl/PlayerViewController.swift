@@ -30,7 +30,7 @@ Audio Repeat < Play > <> Save
  volume.2.fill volume.slash.fill
  */
 
-class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, UIDocumentPickerDelegate, UINavigationControllerDelegate {
+class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, UIDocumentPickerDelegate, UINavigationControllerDelegate, UIScrollViewDelegate {
     
     let player = AVPlayer()
     let playerItemVideoOutput = AVPlayerItemVideoOutput(pixelBufferAttributes: [String(kCVPixelBufferPixelFormatTypeKey): kCVPixelFormatType_32BGRA])
@@ -43,6 +43,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     private var transform: CGAffineTransform?
     private var reverseTransform: CGAffineTransform?
 
+    @IBOutlet var scrollView: UIScrollView!
     @IBOutlet var playerView: PlayerView!
     @IBOutlet var sceneView: SCNView!
     @IBOutlet weak var timeLabel: UILabel!
@@ -67,6 +68,11 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     // for seek
     private var seekInProgress = false
     private var seekChaseTime = CMTime.zero
+
+    // for panning
+    var panPoint: CGPoint?
+    var panStartTime: CMTime?
+
 
     private enum PoseEngine {
         case none, posenet, posenetTf, movenetLightning, movenetThunder
@@ -321,7 +327,15 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         rangeSlider.addTarget(self, action: #selector(rangeSliderValueChanged(_:)),
                               for: .valueChanged)
 
+        // initialize tap & pan gesture recognizers
+        self.addGestures()
+
         self.poseButton.tintColor = .systemGray
+
+        scrollView.delegate = self
+        scrollView.minimumZoomScale = 1.0
+        scrollView.maximumZoomScale = 10.0
+        scrollView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
 
         DispatchQueue.main.async {
             self.poser1.updateModel()
@@ -369,6 +383,32 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
         self.setupLayout()
+        self.setPlayerFrameSize()
+    }
+
+    private func setPlayerFrameSize() {
+        let containerSize = scrollView.frame.size
+        var size = player.currentItem?.presentationSize
+        if (size?.width ?? 0) == 0 {
+            playerView.frame.size = containerSize
+            return
+        }
+        var width = size?.width ?? 1
+        var height = size?.height ?? 1
+        let r1 = width / height
+        let r2 = containerSize.width / containerSize.height
+
+        if r1 >= r2 {    // video is wider than container: by height
+            width = containerSize.width
+            height = width / r2
+        } else {
+            height = containerSize.height
+            width = height * r2
+        }
+        var pt = CGPoint(x: width, y: height)
+        pt = pt.applying(playerView.transform)
+        playerView.frame.size = CGSize(width: pt.x, height: pt.y)
+        scrollView.contentSize = playerView.frame.size
     }
 
     private func setupLayout() {
@@ -384,21 +424,19 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         let buttonWidth = 35, buttonHeight = 35, sliderHeight = 40, sliderMargin = 30, timeLabelWidth = 100
         var x, y: CGFloat
 
-        // player view
-        self.playerView.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height - CGFloat(Int(buttonHeight * 3 / 2)) - CGFloat(sliderHeight))
-        self.overlayView.frame.size = self.playerView.frame.size
-        self.sceneView.frame = self.overlayView.frame
+        self.scrollView.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height - CGFloat(Int(buttonHeight * 3 / 2)) - CGFloat(sliderHeight))
+        self.setPlayerFrameSize()
 
-        self.dismissButton.frame.origin = CGPoint(x: 0, y: 0)
-        self.menuButton.frame.origin = CGPoint(x: self.playerView.frame.size.width - self.menuButton.frame.size.width, y: 0)
+        self.dismissButton.frame.origin = CGPoint(x: rect.minX, y: rect.minY)
+        self.menuButton.frame.origin = CGPoint(x: rect.width - self.menuButton.frame.size.width, y: rect.minY)
 
         let height = CGFloat(200)
-        y = self.playerView.frame.origin.y + self.playerView.frame.height - height
+        y = self.scrollView.frame.origin.y + self.scrollView.frame.height - height
         self.textLogView.frame = CGRect(x: rect.minX, y: y, width: rect.width, height: height)
 
         // range slider
         x = rect.minX + CGFloat(sliderMargin)
-        y = self.playerView.frame.origin.y + self.playerView.frame.size.height + 1
+        y = self.scrollView.frame.origin.y + self.scrollView.frame.size.height + 1
         self.rangeSlider.frame = CGRect(x: x, y: y, width: rect.width - CGFloat(2 * sliderMargin), height: CGFloat(sliderHeight))
 
         y = rangeSlider.frame.origin.y + rangeSlider.frame.size.height * 4 / 3
@@ -622,6 +660,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                     if item.status == .readyToPlay {
                         item.add(self.playerItemVideoOutput)
                         self.displayLink.add(to: .main, forMode: .common)
+                        self.setPlayerFrameSize()
                     }
                 }
                 DispatchQueue.main.async {
@@ -823,7 +862,7 @@ extension PlayerViewController {
         }
     }
 
-    private func smoothSeek(to: CMTime, completionHandler: @escaping (Bool) -> Void) {
+    func smoothSeek(to: CMTime, completionHandler: @escaping (Bool) -> Void) {
         guard player.currentItem?.status == .readyToPlay || pointCloudPlayer != nil else {
             self.seekInProgress = false
             return
@@ -977,6 +1016,12 @@ extension PlayerViewController {
 
         sceneView.scene = scene
         sceneView.allowsCameraControl = true
+    }
+}
+
+extension PlayerViewController {
+    func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+        return self.playerView
     }
 }
 

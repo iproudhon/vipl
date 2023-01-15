@@ -35,6 +35,7 @@
 		857D12B3296EB55C006A8BE5 /* PointCloudRecorder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 857D12B2296EB55C006A8BE5 /* PointCloudRecorder.cpp */; };
 		857D12B8296F394F006A8BE5 /* PointCloudRecorderObjc.mm in Sources */ = {isa = PBXBuildFile; fileRef = 857D12B7296F394F006A8BE5 /* PointCloudRecorderObjc.mm */; };
 		857D12BA2970FD0F006A8BE5 /* FileSystemHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 857D12B92970FD0F006A8BE5 /* FileSystemHelper.swift */; };
+		857D12BC29738406006A8BE5 /* PlayerViewController+Gesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 857D12BB29738406006A8BE5 /* PlayerViewController+Gesture.swift */; };
 		85A501E329627223005F2382 /* Cache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A501E229627223005F2382 /* Cache.swift */; };
 		85A501E52963E383005F2382 /* CaptureMovieFileOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A501E42963E383005F2382 /* CaptureMovieFileOutput.swift */; };
 		85A501E7296536A0005F2382 /* AVAsset+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A501E6296536A0005F2382 /* AVAsset+Extension.swift */; };
@@ -152,6 +153,7 @@
 		857D12B4296F353A006A8BE5 /* PointCloudRecorderObjc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PointCloudRecorderObjc.h; sourceTree = "<group>"; };
 		857D12B7296F394F006A8BE5 /* PointCloudRecorderObjc.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = PointCloudRecorderObjc.mm; sourceTree = "<group>"; };
 		857D12B92970FD0F006A8BE5 /* FileSystemHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemHelper.swift; sourceTree = "<group>"; };
+		857D12BB29738406006A8BE5 /* PlayerViewController+Gesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlayerViewController+Gesture.swift"; sourceTree = "<group>"; };
 		85A501E229627223005F2382 /* Cache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cache.swift; sourceTree = "<group>"; };
 		85A501E42963E383005F2382 /* CaptureMovieFileOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureMovieFileOutput.swift; sourceTree = "<group>"; };
 		85A501E6296536A0005F2382 /* AVAsset+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AVAsset+Extension.swift"; sourceTree = "<group>"; };
@@ -366,6 +368,7 @@
 				85104100295F5F3A00320EC7 /* PoseNet */,
 				85EB33E72968E88100604B6C /* Shaders */,
 				85A501E12962720D005F2382 /* Utils */,
+				857D12BB29738406006A8BE5 /* PlayerViewController+Gesture.swift */,
 			);
 			path = vipl;
 			sourceTree = "<group>";
@@ -663,6 +666,7 @@
 				85AC1B772947BBB900CA4556 /* PlayerViewController.swift in Sources */,
 				85EB33F12968E97B00604B6C /* minMaxFromBuffer.m in Sources */,
 				851040F3295C1B4200320EC7 /* CGSize+TFLite.swift in Sources */,
+				857D12BC29738406006A8BE5 /* PlayerViewController+Gesture.swift in Sources */,
 				85EB33E92968E8CD00604B6C /* DepthToGrayscale.metal in Sources */,
 				851040EE295C1B2800320EC7 /* PoseConfig.swift in Sources */,
 				85C8C6AE295FD38400012236 /* CIImage+Extension.swift in Sources */,

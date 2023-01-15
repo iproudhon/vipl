@@ -19,40 +19,49 @@
                         <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <view contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="vMq-Yd-2Qz" customClass="PlayerView" customModule="vipl" customModuleProvider="target">
+                            <scrollView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleAspectFit" fixedFrame="YES" maximumZoomScale="10" translatesAutoresizingMaskIntoConstraints="NO" id="kwH-T9-LEj">
                                 <rect key="frame" x="0.0" y="48" width="414" height="672"/>
-                                <autoresizingMask key="autoresizingMask"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <subviews>
-                                    <sceneKitView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Tjq-f0-DmK">
-                                        <rect key="frame" x="87" y="272" width="240" height="128"/>
-                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                    </sceneKitView>
-                                    <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="tXC-No-uHB" customClass="OverlayView" customModule="vipl" customModuleProvider="target">
+                                    <view contentMode="scaleToFill" fixedFrame="YES" preservesSuperviewLayoutMargins="YES" translatesAutoresizingMaskIntoConstraints="NO" id="vMq-Yd-2Qz" customClass="PlayerView" customModule="vipl" customModuleProvider="target">
                                         <rect key="frame" x="0.0" y="0.0" width="414" height="672"/>
-                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                    </imageView>
-                                    <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="fNi-Xt-kHl">
-                                        <rect key="frame" x="0.0" y="0.0" width="40" height="40"/>
-                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                        <fontDescription key="fontDescription" type="system" pointSize="14"/>
-                                        <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
-                                        <state key="normal" backgroundImage="chevron.left" catalog="system"/>
-                                        <connections>
-                                            <action selector="dismiss:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="8Dd-cf-fzu"/>
-                                        </connections>
-                                    </button>
-                                    <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" showsMenuAsPrimaryAction="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="QlN-YA-GrD">
-                                        <rect key="frame" x="374" y="0.0" width="40" height="40"/>
-                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                        <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
-                                        <state key="normal" backgroundImage="ellipsis.circle" catalog="system"/>
-                                        <connections>
-                                            <action selector="saveAsNew:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="GTy-Up-K4X"/>
-                                        </connections>
-                                    </button>
+                                        <autoresizingMask key="autoresizingMask"/>
+                                        <subviews>
+                                            <sceneKitView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" preservesSuperviewLayoutMargins="YES" id="Tjq-f0-DmK">
+                                                <rect key="frame" x="0.0" y="0.0" width="414" height="672"/>
+                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                            </sceneKitView>
+                                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" preservesSuperviewLayoutMargins="YES" id="tXC-No-uHB" customClass="OverlayView" customModule="vipl" customModuleProvider="target">
+                                                <rect key="frame" x="0.0" y="0.0" width="414" height="672"/>
+                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                            </imageView>
+                                        </subviews>
+                                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                                    </view>
                                 </subviews>
-                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
-                            </view>
+                                <gestureRecognizers/>
+                                <viewLayoutGuide key="contentLayoutGuide" id="s6H-iT-zIQ"/>
+                                <viewLayoutGuide key="frameLayoutGuide" id="DjF-2b-yfR"/>
+                            </scrollView>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="fNi-Xt-kHl">
+                                <rect key="frame" x="0.0" y="50" width="40" height="40"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
+                                <state key="normal" backgroundImage="chevron.left" catalog="system"/>
+                                <connections>
+                                    <action selector="dismiss:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="8Dd-cf-fzu"/>
+                                </connections>
+                            </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" showsMenuAsPrimaryAction="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="QlN-YA-GrD">
+                                <rect key="frame" x="370" y="50" width="40" height="40"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
+                                <state key="normal" backgroundImage="ellipsis.circle" catalog="system"/>
+                                <connections>
+                                    <action selector="saveAsNew:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="GTy-Up-K4X"/>
+                                </connections>
+                            </button>
                             <textView hidden="YES" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" editable="NO" textAlignment="natural" translatesAutoresizingMaskIntoConstraints="NO" id="uit-Y1-4dH">
                                 <rect key="frame" x="0.0" y="728" width="414" height="134"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
@@ -165,12 +174,14 @@
                         <outlet property="rangeButton" destination="9W0-A1-4BE" id="Fbi-Ca-YBS"/>
                         <outlet property="repeatButton" destination="52I-YU-Rr9" id="suR-oF-SY4"/>
                         <outlet property="sceneView" destination="Tjq-f0-DmK" id="K9y-jh-guk"/>
+                        <outlet property="scrollView" destination="kwH-T9-LEj" id="5uK-Ea-su9"/>
                         <outlet property="soundButton" destination="SYf-eu-Gd8" id="bsd-En-iVt"/>
                         <outlet property="textLogView" destination="uit-Y1-4dH" id="8nE-kA-ZcW"/>
                         <outlet property="timeLabel" destination="UUe-ie-eKh" id="AGa-yk-Fzg"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Ief-a0-LHa" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+                <tapGestureRecognizer id="aQN-3d-jgy"/>
             </objects>
             <point key="canvasLocation" x="24.637681159420293" y="-11.383928571428571"/>
         </scene>
