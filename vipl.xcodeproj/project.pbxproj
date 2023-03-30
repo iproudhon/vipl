@@ -36,6 +36,7 @@
 		857D12B8296F394F006A8BE5 /* PointCloudRecorderObjc.mm in Sources */ = {isa = PBXBuildFile; fileRef = 857D12B7296F394F006A8BE5 /* PointCloudRecorderObjc.mm */; };
 		857D12BA2970FD0F006A8BE5 /* FileSystemHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 857D12B92970FD0F006A8BE5 /* FileSystemHelper.swift */; };
 		857D12BC29738406006A8BE5 /* PlayerViewController+Gesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 857D12BB29738406006A8BE5 /* PlayerViewController+Gesture.swift */; };
+		857D12C829761687006A8BE5 /* PoseCollection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 857D12C729761687006A8BE5 /* PoseCollection.swift */; };
 		85A501E329627223005F2382 /* Cache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A501E229627223005F2382 /* Cache.swift */; };
 		85A501E52963E383005F2382 /* CaptureMovieFileOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A501E42963E383005F2382 /* CaptureMovieFileOutput.swift */; };
 		85A501E7296536A0005F2382 /* AVAsset+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A501E6296536A0005F2382 /* AVAsset+Extension.swift */; };
@@ -154,6 +155,7 @@
 		857D12B7296F394F006A8BE5 /* PointCloudRecorderObjc.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = PointCloudRecorderObjc.mm; sourceTree = "<group>"; };
 		857D12B92970FD0F006A8BE5 /* FileSystemHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemHelper.swift; sourceTree = "<group>"; };
 		857D12BB29738406006A8BE5 /* PlayerViewController+Gesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlayerViewController+Gesture.swift"; sourceTree = "<group>"; };
+		857D12C729761687006A8BE5 /* PoseCollection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseCollection.swift; sourceTree = "<group>"; };
 		85A501E229627223005F2382 /* Cache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cache.swift; sourceTree = "<group>"; };
 		85A501E42963E383005F2382 /* CaptureMovieFileOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureMovieFileOutput.swift; sourceTree = "<group>"; };
 		85A501E6296536A0005F2382 /* AVAsset+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AVAsset+Extension.swift"; sourceTree = "<group>"; };
@@ -254,6 +256,7 @@
 				851040F0295C1B4200320EC7 /* CGSize+TFLite.swift */,
 				851040F2295C1B4200320EC7 /* CVPixelBuffer+TFLite.swift */,
 				851040F1295C1B4200320EC7 /* Data+TFLite.swift */,
+				857D12C729761687006A8BE5 /* PoseCollection.swift */,
 				851040E0295C0C2D00320EC7 /* Models */,
 			);
 			path = Poser;
@@ -697,6 +700,7 @@
 				85C8C64A295F76F300012236 /* CGPoint+Extension.swift in Sources */,
 				853F4D77296A91210093C3AF /* RingBuffer.swift in Sources */,
 				85C8C647295F76F300012236 /* PoseBuilderConfiguration.swift in Sources */,
+				857D12C829761687006A8BE5 /* PoseCollection.swift in Sources */,
 				85C8C64E295F76F300012236 /* PoseNetInput.swift in Sources */,
 				851040F4295C1B4200320EC7 /* Data+TFLite.swift in Sources */,
 				85C8C6A4295FCECD00012236 /* NonMaxSuppression.swift in Sources */,

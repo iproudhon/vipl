@@ -27,4 +27,18 @@ extension CMTime {
         }
         return out
     }
+
+    func msec() -> Int {
+        return Int(seconds * 1000)
+    }
+
+    func equalInMsec(seconds: Double) -> Bool {
+        return Int(self.seconds * 1000) == Int(seconds * 1000)
+    }
+}
+
+extension Double {
+    func equalInMsec(to: Double) -> Bool {
+        return Int(self * 1000) == Int(to * 1000)
+    }
 }

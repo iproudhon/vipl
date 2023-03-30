@@ -31,7 +31,7 @@ class Poser {
         var transform: CGAffineTransform?
         var time: CMTime?
         var freeze: Bool?
-        var completionHandler: ((Task?, Person?) -> Void)?
+        var completionHandler: ((Task?, Golfer?) -> Void)?
     }
     var task: Task?
 
@@ -78,10 +78,15 @@ class Poser {
         return outPixelBuffer
     }
 
+    func estimate(on: CVPixelBuffer) throws -> (Golfer?, Times?) {
+        guard let estimator = poseEstimator else { return (nil, nil) }
+        let (person, times) = try estimator.estimateSinglePose(on: on)
+        return (Golfer(person), times)
+    }
+
     func runInner() {
         objc_sync_enter(self)
-        guard let estimator = poseEstimator,
-              let task = self.task,
+        guard let task = self.task,
               let pixelBuffer = task.pixelBuffer,
               let time = task.time else {
             self.task = nil
@@ -92,12 +97,13 @@ class Poser {
         objc_sync_exit(self)
         defer { self.isRunning = false }
 
-        let result: Person
+        let result: Golfer
         let id = "\(task.assetId ?? ""):pose:\(Int64(time.seconds * 1000))"
         if task.assetId != nil, let cached = Cache.Default.get(id) {
-            result = cached as! Person
+            result = cached as! Golfer
         } else {
-            guard let (uncached, _) = try? estimator.estimateSinglePose(on: pixelBuffer) else {
+            guard let (uncached, _) = try? estimate(on: pixelBuffer),
+                  let uncached = uncached else {
                 os_log("Error running pose estimation.", type: .error)
                 return
             }
@@ -117,7 +123,42 @@ class Poser {
         }
     }
 
-    func runModel(assetId: String?, targetView: OverlayView, pixelBuffer: CVPixelBuffer, transform: CGAffineTransform, time: CMTime, freeze: Bool = false, completionHandler: @escaping (Person?) -> Void) {
+    func isValidPose(_ g: Golfer) -> Bool {
+        // overal score and key parts' score should be above minimum
+        if g.score < minimumScore ||
+            g.leftHip.score < minimumScore ||
+            g.rightHip.score < minimumScore ||
+            g.leftKnee.score < minimumScore ||
+            g.rightKnee.score < minimumScore ||
+            (g.leftAnkle.score < minimumScore && g.rightAnkle.score < minimumScore) {
+            return false
+        }
+
+        func isBelow(_ a: GolferBodyPoint, _ b: GolferBodyPoint) -> Bool {
+            return a.score >= minimumScore && b.score >= minimumScore && a.orgPt.y > b.orgPt.y
+        }
+
+        // sholders shoulbe above knees, knees above ankles
+        if isBelow(g.rightShoulder, g.rightKnee) ||
+            isBelow(g.rightShoulder, g.leftKnee) ||
+            isBelow(g.leftShoulder, g.rightKnee) ||
+            isBelow(g.leftShoulder, g.leftKnee) ||
+            isBelow(g.rightKnee, g.rightAnkle) ||
+            isBelow(g.rightKnee, g.leftAnkle) ||
+            isBelow(g.leftKnee, g.rightAnkle) ||
+            isBelow(g.leftKnee, g.leftAnkle) {
+            return false
+        }
+
+        // wrist should be together
+        if g.leftWrist.score >= minimumScore && g.rightWrist.score >= minimumScore && g.leftWrist.orgPt.distance(to: g.rightWrist.orgPt) > g.unit / 3.0 {
+            return false
+        }
+
+        return true
+    }
+
+    func runModel(assetId: String?, targetView: OverlayView, pixelBuffer: CVPixelBuffer, transform: CGAffineTransform, time: CMTime, freeze: Bool = false, completionHandler: @escaping (Golfer?) -> Void) {
         let task = Task()
         task.assetId = assetId
         task.transform = transform
@@ -129,20 +170,7 @@ class Poser {
                   let result = result else {
                 return
             }
-            var valid = result.score >= self.minimumScore
-            for kp in result.keyPoints {
-                if !valid {
-                    break
-                }
-                switch kp.bodyPart {
-                case .leftAnkle, .leftKnee, .leftHip, .rightAnkle, .rightKnee, .rightHip:
-                    if kp.score < self.minimumScore {
-                        valid = false
-                    }
-                default:
-                    break
-                }
-            }
+            let valid = self.isValidPose(result)
 
             if !task.freeze! {
                 targetView.setPose(valid ? result : nil, task.time!)
@@ -152,11 +180,7 @@ class Poser {
                 }
             }
             if let log = self.logFunc {
-                var msg = String(format: "%.1f ", result.score)
-                for p in result.keyPoints {
-                    msg += "\(p.bodyPart):" + String(format: "%.1f", p.score) + " "
-                }
-                log("%%%: " + msg)
+                log("%%%: " + String(format: "%.1f leftAnkle=%.1f rightAnkle=%.1f leftKnee=%.1f rightKnee=%.1f leftHip=%.1f rightHip=%.1f", result.score, result.leftAnkle.score, result.rightAnkle.score, result.leftKnee.score, result.rightKnee.score, result.leftHip.score, result.rightHip.score))
             }
             DispatchQueue.main.async {
                 targetView.draw(size: task.pixelBuffer!.size)

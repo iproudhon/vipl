@@ -21,19 +21,24 @@ import os
 class OverlayView: UIImageView {
 
   // frozen poses & snaps
-  private var poses = [(person: Person, time: CMTime)]()
+  private var poses = [(golfer: Golfer, time: CMTime)]()
   private var snaps = [(snap: UIImage, time: CMTime)]()
 
   // current time, pose & snap
   private var time: CMTime?
-  private var pose: Person?
+  private var pose: Golfer?
   private var snap: UIImage?
 
   /// Visualization configs
   private enum Config {
-    static let faceColor = UIColor.orange
-    static let leftColor = UIColor.systemTeal
-    static let rightColor = UIColor.systemPurple
+    static let faceColor = UIColor(red: 1, green: 0.5, blue: 0, alpha: 0.9)
+    static let faceWeakColor = UIColor(red: 1, green: 0.5, blue: 0, alpha: 0.5)
+    static let leftColor = UIColor(red: 0, green: 0.5, blue: 0.5, alpha: 1)
+    static let leftWeakColor = UIColor(red: 0, green: 0.5, blue: 0.5, alpha: 0.3)
+    static let rightColor = UIColor(red: 0.5, green: 0, blue: 0.5, alpha: 1)
+    static let rightWeakColor = UIColor(red: 0.5, green: 0, blue: 0.5, alpha: 0.3)
+    static let wristColor = UIColor(red: 1.0, green: 0, blue: 0, alpha: 1)
+    static let wristWeakColor = UIColor(red: 1.0, green: 0, blue: 0, alpha: 0.3)
     static let dotRadius = CGFloat(5.0)
     static let line = (width: CGFloat(2.0), color: UIColor.gray)
   }
@@ -151,9 +156,76 @@ class OverlayView: UIImageView {
     return strokes
   }
 
-  func pushPose(pose: Person?, snap: UIImage?, time: CMTime) {
+  func drawDot(at ctx: CGContext, pt: GolferBodyPoint, color: UIColor, weakColor: UIColor) {
+      let dotRect = CGRect(x: pt.pt.x - Config.dotRadius / 2, y: pt.pt.y - Config.dotRadius / 2, width: Config.dotRadius, height: Config.dotRadius)
+      let path = CGPath(roundedRect: dotRect, cornerWidth: Config.dotRadius, cornerHeight: Config.dotRadius, transform: nil)
+      if pt.score > 0.3 {
+          ctx.setStrokeColor(color.cgColor)
+      } else {
+          ctx.setStrokeColor(weakColor.cgColor)
+      }
+      ctx.addPath(path)
+      ctx.strokePath()
+  }
+
+  func draw(at ctx: CGContext, golfer: Golfer, with: Bool = false) {
+
+      // lines first
+      ctx.setLineWidth(Config.line.width)
+      ctx.setStrokeColor(Config.line.color.cgColor)
+      ctx.move(to: golfer.leftAnkle.pt)
+      ctx.addLine(to: golfer.leftKnee.pt)
+      ctx.addLine(to: golfer.leftHip.pt)
+      ctx.addLine(to: golfer.leftShoulder.pt)
+      ctx.addLine(to: golfer.leftElbow.pt)
+      ctx.addLine(to: golfer.leftWrist.pt)
+      ctx.strokePath()
+
+      ctx.move(to: golfer.rightAnkle.pt)
+      ctx.addLine(to: golfer.rightKnee.pt)
+      ctx.addLine(to: golfer.rightHip.pt)
+      ctx.addLine(to: golfer.rightShoulder.pt)
+      ctx.addLine(to: golfer.rightElbow.pt)
+      ctx.addLine(to: golfer.rightWrist.pt)
+      ctx.strokePath()
+
+      ctx.move(to: golfer.leftHip.pt)
+      ctx.addLine(to: golfer.rightHip.pt)
+      ctx.move(to: golfer.leftShoulder.pt)
+      ctx.addLine(to: golfer.rightShoulder.pt)
+      ctx.strokePath()
+
+      // dots
+      ctx.setLineWidth(Config.dotRadius)
+      drawDot(at: ctx, pt: golfer.nose, color: Config.faceColor, weakColor: Config.faceWeakColor)
+      drawDot(at: ctx, pt: golfer.leftEar, color: Config.faceColor, weakColor: Config.faceWeakColor)
+      drawDot(at: ctx, pt: golfer.rightEar, color: Config.faceColor, weakColor: Config.faceWeakColor)
+      drawDot(at: ctx, pt: golfer.leftEye, color: Config.faceColor, weakColor: Config.faceWeakColor)
+      drawDot(at: ctx, pt: golfer.rightEye, color: Config.faceColor, weakColor: Config.faceWeakColor)
+
+      // left side
+      drawDot(at: ctx, pt: golfer.leftAnkle, color: Config.leftColor, weakColor: Config.leftWeakColor)
+      drawDot(at: ctx, pt: golfer.leftKnee, color: Config.leftColor, weakColor: Config.leftWeakColor)
+      drawDot(at: ctx, pt: golfer.leftHip, color: Config.leftColor, weakColor: Config.leftWeakColor)
+      drawDot(at: ctx, pt: golfer.leftShoulder, color: Config.leftColor, weakColor: Config.leftWeakColor)
+      drawDot(at: ctx, pt: golfer.leftElbow, color: Config.leftColor, weakColor: Config.leftWeakColor)
+      drawDot(at: ctx, pt: golfer.leftWrist, color: Config.leftColor, weakColor: Config.leftWeakColor)
+
+      // right side
+      drawDot(at: ctx, pt: golfer.rightAnkle, color: Config.rightColor, weakColor: Config.rightWeakColor)
+      drawDot(at: ctx, pt: golfer.rightKnee, color: Config.rightColor, weakColor: Config.rightWeakColor)
+      drawDot(at: ctx, pt: golfer.rightHip, color: Config.rightColor, weakColor: Config.rightWeakColor)
+      drawDot(at: ctx, pt: golfer.rightShoulder, color: Config.rightColor, weakColor: Config.rightWeakColor)
+      drawDot(at: ctx, pt: golfer.rightElbow, color: Config.rightColor, weakColor: Config.rightWeakColor)
+      drawDot(at: ctx, pt: golfer.rightWrist, color: Config.rightColor, weakColor: Config.rightWeakColor)
+
+      // wrist
+      drawDot(at: ctx, pt: golfer.wrist, color: Config.wristColor, weakColor: Config.wristWeakColor)
+  }
+
+  func pushPose(pose: Golfer?, snap: UIImage?, time: CMTime) {
     if pose != nil {
-      poses.append((person: pose!, time: time))
+      poses.append((golfer: pose!, time: time))
     }
     if snap != nil {
       snaps.append((snap: snap!, time: time))
@@ -178,10 +250,10 @@ class OverlayView: UIImageView {
       snap.draw(at: .zero)
     }
     for pos in self.poses {
-        draw(at: context, person: pos.person)
+      draw(at: context, golfer: pos.golfer)
     }
     if let pose = pose {
-      draw(at: context, person: pose)
+      draw(at: context, golfer: pose)
     }
 
     guard let image = UIGraphicsGetImageFromCurrentImageContext() else { fatalError() }
@@ -189,7 +261,7 @@ class OverlayView: UIImageView {
     UIGraphicsEndImageContext()
   }
 
-  func setPose(_ pose: Person?, _ time: CMTime) {
+  func setPose(_ pose: Golfer?, _ time: CMTime) {
     self.pose = pose
     self.time = time
   }

@@ -52,6 +52,14 @@ struct RingBuffer<T> {
         return elements[nth % elements.count]
     }
 
+    mutating func set(_ nth: Int, _ t: T?) {
+        if nth < 0 || nth >= count {
+            return
+        }
+        let nth = self.head + nth
+        elements[nth % elements.count] = t
+    }
+
     mutating func clear() {
         head = -1
         tail = -1

@@ -74,6 +74,10 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     var panStartTime: CMTime?
 
 
+    // for pose data analysis
+    var poseCollection: PoseCollection = PoseCollection(size: PoseCollection.defaultMaxCount, minimumScore: 0.3)
+
+
     private enum PoseEngine {
         case none, posenet, posenetTf, movenetLightning, movenetThunder
     }
@@ -181,6 +185,8 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                             guard let orgUrl = (self.player.currentItem?.asset as? AVURLAsset)?.url else { return }
                             self.player.replaceCurrentItem(with: nil)
                             self.setAssetId()
+                            self.poseCollection.clear()
+
                             do {
                                 try FileManager.default.removeItem(at: orgUrl)
                                 try FileManager.default.moveItem(at: url, to: orgUrl)
@@ -190,6 +196,9 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                             }
                             self.player.replaceCurrentItem(with: AVPlayerItem(url: orgUrl))
                             self.setAssetId()
+                            DispatchQueue.global(qos: .background).async {
+                                try? self.poseCollection.load(poser: self.poser1, asset: AVAsset(url: orgUrl))
+                            }
                             print("Video saved to \(String(describing: orgUrl.path))")
                         }
                     }
@@ -255,6 +264,9 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             self.playerView.player = player
             self.player.replaceCurrentItem(with: AVPlayerItem(url: url))
             self.setAssetId()
+            DispatchQueue.global(qos: .background).async {
+                try? self.poseCollection.load(poser: self.poser1, asset: AVAsset(url: url))
+            }
             self.setupPlayerObservers()
 
             if let asset = self.player.currentItem?.asset {
@@ -926,6 +938,27 @@ extension PlayerViewController {
 }
 
 extension PlayerViewController {
+    func doPose(pixels: CVPixelBuffer, time: CMTime, freeze: Bool = false) {
+        if let golfer = poseCollection.seek(to: time.seconds), time.equalInMsec(seconds: golfer.time) {
+            log("using loaded one")
+            let valid = poser1.isValidPose(golfer)
+            if !freeze {
+                overlayView.setPose(valid ? golfer : nil, time)
+            } else {
+                if valid {
+                    overlayView.pushPose(pose: golfer, snap: nil, time: time)
+                }
+            }
+            // self.log("%%%: " + String(format: "%.1f leftAnkle=%.1f rightAnkle=%.1f leftKnee=%.1f rightKnee=%.1f leftHip=%.1f rightHip=%.1f", golfer.score, golfer.leftAnkle.score, golfer.rightAnkle.score, golfer.leftKnee.score, golfer.rightKnee.score, golfer.leftHip.score, golfer.rightHip.score))
+            self.log("%%%: " + String(format: "%.1f v=(%.1f, %.1f)", golfer.score, golfer.wrist.vx / 1000, golfer.wrist.vy / 1000))
+            DispatchQueue.main.async {
+                self.overlayView.draw(size: pixels.size)
+            }
+        } else {
+            poser1.runModel(assetId: assetId, targetView: overlayView, pixelBuffer: pixels, transform: reverseTransform!, time: time, freeze: false) { _ in }
+        }
+    }
+
     @objc func displayLinkFired(link: CADisplayLink) {
         let currentTime = playerItemVideoOutput.itemTime(forHostTime: CACurrentMediaTime())
         if playerItemVideoOutput.hasNewPixelBuffer(forItemTime: currentTime) {
@@ -937,7 +970,8 @@ extension PlayerViewController {
                     case .posenet:
                         poser2.runModel(targetView: overlayView, pixelBuffer: buffer)
                     case .movenetLightning, .movenetThunder:
-                        poser1.runModel(assetId: self.assetId, targetView: overlayView, pixelBuffer: buffer, transform: self.reverseTransform!, time: currentTime, freeze: false) { _ in }
+                        // poser1.runModel(assetId: self.assetId, targetView: overlayView, pixelBuffer: buffer, transform: self.reverseTransform!, time: currentTime, freeze: false) { _ in }
+                        doPose(pixels: buffer, time: currentTime, freeze: false)
                     default:
                         break
                     }
