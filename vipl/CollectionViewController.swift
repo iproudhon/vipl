@@ -466,12 +466,7 @@ extension CollectionViewController {
         cell.swingItem = swingItems?[ix]
         DispatchQueue.main.async {
             if let swingItem = cell.swingItem, let url = swingItem.url {
-                if swingItem.thumbnail == nil {
-                    swingItem.thumbnail = CollectionViewController.getThumbnail(url: url)
-                }
-                if let thumbnail = swingItem.thumbnail {
-                    cell.img.image = thumbnail
-                }
+                cell.img.image = CollectionViewController.getThumbnail(url: url)
             }
         }
         

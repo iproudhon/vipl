@@ -6,12 +6,14 @@
 //
 
 import AVFoundation
+import CoreMotion
 import CoreLocation
 import Photos
 import AVKit
 import UIKit
 import SceneKit
 import MobileCoreServices
+import Vision
 
 class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDepthDataOutputDelegate, AVCaptureMetadataOutputObjectsDelegate, AVCaptureAudioDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDelegate {
 
@@ -25,6 +27,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
     }
 
     let locationManager = CLLocationManager()
+    let motionManager = CMMotionManager()
 
     private enum SessionSetupResult {
         case success
@@ -62,6 +65,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
     @IBOutlet private weak var dismissCapturedVideoButton: UIButton!
 
     @IBOutlet private weak var overlayView: OverlayView!
+    @IBOutlet private weak var gravityView: GravityView!
     @IBOutlet private weak var sceneView: SCNView!
     @IBOutlet private weak var textLogView: UITextView!
 
@@ -72,6 +76,10 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
 
     private var showPose: Bool = true
     private var poser = Poser()
+
+    private var useGestureSwitch = true
+    private var useGestureTime: Date?
+    private var useGestureTimeThreshold: TimeInterval = 2
 
     // focus point
     private var focusPoint = CGPoint(x: 0, y: 0)
@@ -91,6 +99,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         rangeSlider.addTarget(self, action: #selector(rangeSliderValueChanged(_:)), for: .valueChanged)
 
         setupLayout()
+        initGravityView()
 
         self.pointClouds = PointCloudCollection(scnView: sceneView, count: 100)
         self.overlayView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(focusAndExposeTap(_:))))
@@ -214,7 +223,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
 
     private func setupLayout() {
         // previewView
-        //   overlayView
+        //   overlayView, gravityView
         //   xButton, camerasMenu, menuButton
         //   durationLabel
         //   sceneView
@@ -230,6 +239,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         height = rect.height - CGFloat(buttonSize + 2 * buttonMargin)
         self.previewView.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: height)
         self.overlayView.frame = CGRect(x: 0, y: 0, width: self.previewView.frame.width, height: self.previewView.frame.height)
+        self.gravityView.frame = CGRect(x: 0, y: 0, width: self.previewView.frame.width, height: self.previewView.frame.height)
         self.xButton.frame.origin = CGPoint(x: 0, y: 0)
         x = CGFloat(buttonMargin) * 2 + self.xButton.frame.width
         self.camerasMenu.frame.origin = CGPoint(x: x, y: CGFloat(buttonMargin))
@@ -1168,7 +1178,27 @@ extension CaptureViewController {
                                     transform = CGAffineTransform(-1, 0, 0, 1, CGFloat(CVPixelBufferGetWidth(pixelBuffer)), 0)
                                 }
                             }
-                            poser.runModel(assetId: nil, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: transform!, time: CMTime.zero, freeze: false) { _ in }
+                            poser.runModel(assetId: nil, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: transform!, time: CMTime.zero, freeze: false) { (golfer) in
+                                let isRecording = (self.movieOut?.isRecording ?? false) || self.pointCloudOut != nil
+                                if isRecording {
+                                    return
+                                }
+                                if let lastTime = self.useGestureTime,
+                                   Date().timeIntervalSince(lastTime) < self.useGestureTimeThreshold {
+                                    // do nothing
+                                } else {
+                                    if let golfer = golfer,
+                                       golfer.leftWrist.score >= 0.3 && golfer.leftElbow.score >= 0.3 && golfer.leftShoulder.score >= 0.3 && golfer.rightWrist.score >= 0.3 && golfer.rightElbow.score >= 0.3 && golfer.rightShoulder.score >= 0.3 &&
+                                        self.isXMark(leftWrist: golfer.leftWrist.pt, leftElbow: golfer.leftElbow.pt, leftShoulder: golfer.leftShoulder.pt, rightWrist: golfer.rightWrist.pt, rightElbow: golfer.rightElbow.pt, rightShoulder: golfer.rightShoulder.pt) {
+                                        DispatchQueue.main.async {
+                                            self.record_stop(self.recordButton!)
+                                            self.useGestureTime = Date()
+                                            self.flashTorch(count: 2, millis: 100)
+                                            print("X Mark")
+                                        }
+                                    }
+                                }
+                            }
 
                             /* TODO: autofocus on found figure
                              { (person) in
@@ -1190,6 +1220,23 @@ extension CaptureViewController {
                                 }
                             }
                              */
+                        }
+                    }
+                }
+                if false /* self.showHands */ {
+                    DispatchQueue.main.async {
+                        let handPoseRequest = VNDetectHumanHandPoseRequest()
+                        handPoseRequest.maximumHandCount = 5
+                        if let pixelBuffer = CMSampleBufferGetImageBuffer(videoData.sampleBuffer) {
+                            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
+                            do {
+                                try handler.perform([handPoseRequest])
+                                for pose in handPoseRequest.results ?? [] {
+                                    self.detectHandPose(pose)
+                                }
+                            } catch {
+                                print("Failed to perform request: \(error.localizedDescription)")
+                            }
                         }
                     }
                 }
@@ -1456,6 +1503,212 @@ extension CaptureViewController {
     }
 }
 
+extension CaptureViewController {
+
+    func detectHandPose(_ observation: VNHumanHandPoseObservation) {
+        // Extract points for each finger
+        guard let thumbTip = try? observation.recognizedPoint(.thumbTip),
+              let thumbIP = try? observation.recognizedPoint(.thumbIP),
+              let thumbMP = try? observation.recognizedPoint(.thumbMP),
+              let indexTip = try? observation.recognizedPoint(.indexTip),
+              let indexPIP = try? observation.recognizedPoint(.indexPIP),
+              let middleTip = try? observation.recognizedPoint(.middleTip),
+              let middlePIP = try? observation.recognizedPoint(.middlePIP),
+              let ringTip = try? observation.recognizedPoint(.ringTip),
+              let ringPIP = try? observation.recognizedPoint(.ringPIP),
+              let littleTip = try? observation.recognizedPoint(.littleTip),
+              let littlePIP = try? observation.recognizedPoint(.littlePIP) else {
+            return
+        }
+
+        // Calculate angles for better distinction
+        let thumbAngle = angleBetweenPoints(point1: thumbMP.location, point2: thumbIP.location, point3: thumbTip.location)
+        let indexAngle = angleBetweenPoints(point1: thumbMP.location, point2: indexPIP.location, point3: indexTip.location)
+        let rect = boundingRectangle(points: [thumbTip.location, indexTip.location, middleTip.location, ringTip.location, littleTip.location])
+        let ratio = rect.height / (rect.width == 0 ? 1 : rect.width)
+
+        print("XXX: \(thumbAngle) \(indexAngle) \(ratio)")
+
+        // Check for thumbs up gesture
+        if ratio > 2.0 && thumbAngle > 150 && thumbTip.location.y > thumbMP.location.y {
+            flashTorch(count: 3, millis: 50)
+            print("Thumbs Up \(thumbAngle) \(indexAngle)")
+        }
+
+        // Check for thumbs down gesture
+        if ratio > 2.0 && thumbAngle > 150 && thumbTip.location.y < thumbMP.location.y {
+            flashTorch(count: 2, millis: 100)
+            print("Thumbs Down \(thumbAngle) \(indexAngle)")
+        }
+    }
+
+    func boundingRectangle(points: [CGPoint]) -> CGRect {
+        var minX = CGFloat.greatestFiniteMagnitude
+        var minY = CGFloat.greatestFiniteMagnitude
+        var maxX = CGFloat.leastNormalMagnitude
+        var maxY = CGFloat.leastNormalMagnitude
+
+        for point in points {
+            minX = min(minX, point.x)
+            minY = min(minY, point.y)
+            maxX = max(maxX, point.x)
+            maxY = max(maxY, point.y)
+        }
+
+        let width = maxX - minX
+        let height = maxY - minY
+
+        return CGRect(x: minX, y: minY, width: width, height: height)
+    }
+
+    func angleBetweenPoints(point1: CGPoint, point2: CGPoint, point3: CGPoint) -> CGFloat {
+        let v1 = CGVector(dx: point1.x - point2.x, dy: point1.y - point2.y)
+        let v2 = CGVector(dx: point3.x - point2.x, dy: point3.y - point2.y)
+        let angle = atan2(v2.dy, v2.dx) - atan2(v1.dy, v1.dx)
+        return abs(angle) * 180 / .pi
+    }
+
+    // Helper function to calculate the angle between three points
+    func angleBetweenPoints2(point1: CGPoint, point2: CGPoint, point3: CGPoint) -> CGFloat {
+        let v1 = CGVector(dx: point1.x - point2.x, dy: point1.y - point2.y)
+        let v2 = CGVector(dx: point3.x - point2.x, dy: point3.y - point2.y)
+        let angle = atan2(v2.dy, v2.dx) - atan2(v1.dy, v1.dx)
+
+        // Normalize angle to [0, 2 * pi]
+        var normalizedAngle = angle.truncatingRemainder(dividingBy: 2 * .pi)
+        if normalizedAngle < 0 {
+            normalizedAngle += 2 * .pi
+        }
+
+        return normalizedAngle * 180 / .pi
+    }
+
+    func processHandPose(_ observation: VNHumanHandPoseObservation) {
+        // Extract hand joint locations
+        guard let thumbTip = try? observation.recognizedPoint(.thumbTip),
+              let thumbIP = try? observation.recognizedPoint(.thumbIP),
+              let thumbMP = try? observation.recognizedPoint(.thumbMP),
+              let indexTip = try? observation.recognizedPoint(.indexTip),
+              let indexDIP = try? observation.recognizedPoint(.indexDIP),
+              let indexPIP = try? observation.recognizedPoint(.indexPIP),
+              let middleTip = try? observation.recognizedPoint(.middleTip),
+              let middleDIP = try? observation.recognizedPoint(.middleDIP),
+              let middlePIP = try? observation.recognizedPoint(.middlePIP),
+              let ringTip = try? observation.recognizedPoint(.ringTip),
+              let ringPIP = try? observation.recognizedPoint(.ringPIP),
+              let littleTip = try? observation.recognizedPoint(.littleTip),
+              let littlePIP = try? observation.recognizedPoint(.littlePIP) else {
+            return
+        }
+
+        /*
+        // Check for OK sign
+        if thumbTip.location.distance(to: indexPIP.location) < 0.1 && indexDIP.location.y < indexPIP.location.y {
+            print("OK Sign")
+        }
+
+        // Check for V sign
+        if indexDIP.location.y < indexPIP.location.y && middleDIP.location.y < middlePIP.location.y &&
+            indexTip.location.distance(to: middleTip.location) > 0.1 && thumbIP.location.y > thumbTip.location.y {
+            print("V Sign")
+        }
+
+        // Check for Peace sign
+        if indexDIP.location.y < indexPIP.location.y && middleDIP.location.y < middlePIP.location.y &&
+            ringTip.location.y > middleTip.location.y && littleTip.location.y > middleTip.location.y {
+            print("Peace Sign")
+        }
+
+        // Check for ILY sign
+        if thumbIP.location.y > thumbTip.location.y && indexDIP.location.y < indexPIP.location.y &&
+            middleDIP.location.y < middlePIP.location.y && ringTip.location.y > middleTip.location.y &&
+            littleTip.location.y > middleTip.location.y {
+            print("ILY Sign")
+        }
+         */
+
+        // Check for thumbs up gesture
+        if thumbTip.location.y > thumbIP.location.y && thumbTip.location.y > thumbMP.location.y {
+            let fingersCurled = indexTip.location.y < indexPIP.location.y &&
+                                middleTip.location.y < middlePIP.location.y &&
+                                ringTip.location.y < ringPIP.location.y &&
+                                littleTip.location.y < littlePIP.location.y
+
+            if fingersCurled {
+                print("Thumbs Up")
+            }
+        }
+
+        // Check for thumbs down gesture
+        if thumbTip.location.y < thumbIP.location.y && thumbTip.location.y < thumbMP.location.y {
+            let fingersExtended = indexTip.location.y > indexPIP.location.y &&
+            middleTip.location.y > middlePIP.location.y &&
+            ringTip.location.y > ringPIP.location.y &&
+            littleTip.location.y > littlePIP.location.y
+
+            if fingersExtended {
+                print("Thumbs Down")
+            }
+        }
+
+        /*
+        // Check for Thumbs Up
+        if thumbIP.location.y > thumbTip.location.y && indexTip.location.y > indexPIP.location.y &&
+            middleTip.location.y > middlePIP.location.y && ringTip.location.y > middleTip.location.y &&
+            littleTip.location.y > middleTip.location.y {
+            print("Thumbs Up")
+        }
+
+        // Check for thumbs down gesture
+        if thumbTip.location.y < thumbIP.location.y &&
+            indexTip.location.y > indexPIP.location.y {
+            print("Thumbs Down")
+        }
+         */
+    }
+
+    func flashTorch(count: Int, millis: Int) {
+        guard let device = AVCaptureDevice.default(for: .video), device.hasTorch else { return }
+
+        let interval: TimeInterval = Double(millis) / 1000.0
+        for i in 0..<count {
+            DispatchQueue.main.asyncAfter(deadline: .now() + interval * TimeInterval(2 * i)) {
+                do {
+                    try device.lockForConfiguration()
+                    device.torchMode = .on
+                    try device.setTorchModeOn(level: 0.1)
+                    device.unlockForConfiguration()
+                } catch {
+                    print("Error turning on flashlight: \(error)")
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + interval * TimeInterval(2 * i + 1)) {
+                do {
+                    try device.lockForConfiguration()
+                    device.torchMode = .off
+                    device.unlockForConfiguration()
+                } catch {
+                    print("Error turning off flashlight: \(error)")
+                }
+            }
+        }
+    }
+
+    func isXMark(leftWrist: CGPoint, leftElbow: CGPoint, leftShoulder: CGPoint, rightWrist: CGPoint, rightElbow: CGPoint, rightShoulder: CGPoint) -> Bool {
+        let shoulderDist = euclideanDistance(leftShoulder, rightShoulder)
+        let wristDist = euclideanDistance(leftWrist, rightWrist)
+        let xMinShoulder = min(leftShoulder.x, rightShoulder.x)
+        let xMaxShoulder = max(leftShoulder.x, rightShoulder.x)
+
+        return xMinShoulder < leftWrist.x && leftWrist.x < xMaxShoulder && xMinShoulder < rightWrist.x && rightWrist.x < xMaxShoulder && abs(leftShoulder.x - leftElbow.x) < abs(leftShoulder.x - leftWrist.x) && abs(rightShoulder.x - rightElbow.x) < abs(rightShoulder.x - rightWrist.x) && min(leftWrist.y, rightWrist.y) < max(leftElbow.y, rightElbow.y) && shoulderDist > wristDist * 3
+    }
+
+    func euclideanDistance(_ point1: CGPoint, _ point2: CGPoint) -> CGFloat {
+        return sqrt(pow(point1.x - point2.x, 2) + pow(point1.y - point2.y, 2))
+    }
+}
+
 // logging to UITextView
 extension CaptureViewController {
     func log(_ msg: String) {
@@ -1472,5 +1725,22 @@ extension CaptureViewController {
             }
         }
         print(msg)
+    }
+}
+
+extension CaptureViewController {
+    func initGravityView() {
+        // Check if accelerometer data is available
+        if motionManager.isDeviceMotionAvailable {
+            motionManager.deviceMotionUpdateInterval = 0.01
+            motionManager.startDeviceMotionUpdates(to: .main) { (data, error) in
+                if let validData = data {
+                    // Update the vector view
+                    DispatchQueue.main.async {
+                        self.gravityView.update(gravity: validData.gravity)
+                    }
+                }
+            }
+        }
     }
 }

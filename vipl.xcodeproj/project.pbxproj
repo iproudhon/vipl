@@ -37,6 +37,7 @@
 		857D12BA2970FD0F006A8BE5 /* FileSystemHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 857D12B92970FD0F006A8BE5 /* FileSystemHelper.swift */; };
 		857D12BC29738406006A8BE5 /* PlayerViewController+Gesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 857D12BB29738406006A8BE5 /* PlayerViewController+Gesture.swift */; };
 		857D12C829761687006A8BE5 /* PoseCollection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 857D12C729761687006A8BE5 /* PoseCollection.swift */; };
+		858EABDD2A30049A00C81389 /* GravityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 858EABDC2A30049A00C81389 /* GravityView.swift */; };
 		85A501E329627223005F2382 /* Cache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A501E229627223005F2382 /* Cache.swift */; };
 		85A501E52963E383005F2382 /* CaptureMovieFileOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A501E42963E383005F2382 /* CaptureMovieFileOutput.swift */; };
 		85A501E7296536A0005F2382 /* AVAsset+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A501E6296536A0005F2382 /* AVAsset+Extension.swift */; };
@@ -156,6 +157,7 @@
 		857D12B92970FD0F006A8BE5 /* FileSystemHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemHelper.swift; sourceTree = "<group>"; };
 		857D12BB29738406006A8BE5 /* PlayerViewController+Gesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlayerViewController+Gesture.swift"; sourceTree = "<group>"; };
 		857D12C729761687006A8BE5 /* PoseCollection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseCollection.swift; sourceTree = "<group>"; };
+		858EABDC2A30049A00C81389 /* GravityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GravityView.swift; sourceTree = "<group>"; };
 		85A501E229627223005F2382 /* Cache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cache.swift; sourceTree = "<group>"; };
 		85A501E42963E383005F2382 /* CaptureMovieFileOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureMovieFileOutput.swift; sourceTree = "<group>"; };
 		85A501E6296536A0005F2382 /* AVAsset+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AVAsset+Extension.swift"; sourceTree = "<group>"; };
@@ -362,6 +364,7 @@
 				851040DD295637B200320EC7 /* CaptureHelper.swift */,
 				851040D729540F8E00320EC7 /* AVPlayerController.swift */,
 				851040D52951B1FE00320EC7 /* RangeSlider.swift */,
+				858EABDC2A30049A00C81389 /* GravityView.swift */,
 				85AC1B11293EBAEF00CA4556 /* Assets.xcassets */,
 				85AC1B16293EBAEF00CA4556 /* Info.plist */,
 				85C8C68A295FCEAA00012236 /* CoreMLHelpers */,
@@ -643,6 +646,7 @@
 				85AC1B0D293EBAEE00CA4556 /* ViewController.swift in Sources */,
 				857D12B3296EB55C006A8BE5 /* PointCloudRecorder.cpp in Sources */,
 				851040D829540F8E00320EC7 /* AVPlayerController.swift in Sources */,
+				858EABDD2A30049A00C81389 /* GravityView.swift in Sources */,
 				85C8C64B295F76F300012236 /* CGImage+Extension.swift in Sources */,
 				85C8C6A5295FCECD00012236 /* Math.swift in Sources */,
 				85EB33ED2968E92D00604B6C /* FilterRenderer.swift in Sources */,

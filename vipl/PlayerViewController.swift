@@ -324,6 +324,13 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: .mixWithOthers)
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("Setting category to AVAudioSessionCategoryPlayback failed.")
+        }
+
         self.soundOn = !UserDefaults.standard.bool(forKey: "mute-sound")
         self.player.isMuted = !self.soundOn
         if self.soundOn {

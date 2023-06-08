@@ -92,7 +92,7 @@ class PoseCollection {
 
             // TODO: need to normalize to body unit
             if pg != nil {
-                var gpt = g.points[index]!
+                let gpt = g.points[index]!
                 let pgpt = pg!.points[index]!
                 let vx = (gpt.pt.x - pgpt.pt.x) / (g.time - pg!.time)
                 let vy = (gpt.pt.y - pgpt.pt.y) / (g.time - pg!.time)
@@ -136,7 +136,6 @@ class PoseCollection {
             m = (l + h) / 2
             if let g = ring.get(m) {
                 if to.equalInMsec(to: g.time) {
-                    print("XXX: found")
                     if moveCursor {
                         currentTime = g.time
                         currentFrame = m
