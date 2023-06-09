@@ -6,6 +6,7 @@
 //
 
 import AVFoundation
+import CoreLocation
 import UIKit
 
 extension AVAsset {
@@ -62,7 +63,7 @@ extension AVAsset {
         return (orientation, device, transform, reverseTransform)
     }
 
-    func info() -> String {
+    func info() -> (String?, [String:Any]?) {
         var info = [String:Any]()
         let orientation: UIDeviceOrientation
         (orientation, _, _, _) = self.videoOrientation()
@@ -113,9 +114,122 @@ extension AVAsset {
 
         if let data = try? JSONSerialization.data(withJSONObject: info, options: [JSONSerialization.WritingOptions.prettyPrinted]),
            let string = String(data: data, encoding: String.Encoding.utf8) {
-            return string
+            return (string, info)
         } else {
-            return "whatever"
+            return ("whatever", info)
+        }
+    }
+
+    public static func setDescription(fileURL: URL, description: String, completionHandler: @escaping (Bool) -> Void) {
+        // Load the asset
+        let asset = AVAsset(url: fileURL)
+
+        // Initialize export session
+        guard let exportSession = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetPassthrough) else {
+            print("Error creating export session")
+            completionHandler(false)
+            return
+        }
+
+        // Fetch existing metadata
+        var metadata = asset.metadata
+
+        // Create metadata item for description
+        let descriptionMetadataItem = AVMutableMetadataItem()
+        descriptionMetadataItem.key = AVMetadataKey.quickTimeMetadataKeyDescription as (NSCopying & NSObjectProtocol)?
+        descriptionMetadataItem.keySpace = AVMetadataKeySpace.quickTimeMetadata
+        descriptionMetadataItem.value = description as (NSCopying & NSObjectProtocol)?
+        descriptionMetadataItem.locale = Locale.current
+
+        // Remove existing description metadata item if it exists
+        metadata = metadata.filter { !($0.key as? String == AVMetadataKey.quickTimeMetadataKeyDescription.rawValue && $0.keySpace == .quickTimeMetadata) }
+
+        // Append new description metadata item
+        metadata.append(descriptionMetadataItem)
+
+        // Set metadata to export session
+        exportSession.metadata = metadata
+
+        // Define output URL
+        guard let tmpUrl = FileSystemHelper.getPrimaryTemporaryFileName() else {
+            print("cannot get temporary file name")
+            completionHandler(false)
+            return
+        }
+        exportSession.outputURL = tmpUrl
+        exportSession.outputFileType = AVFileType.mov
+
+        // Start export session
+        exportSession.exportAsynchronously(completionHandler: {
+            switch exportSession.status {
+            case .completed:
+                print("Export complete")
+                do {
+                    try FileManager.default.removeItem(at: fileURL)
+                    try FileManager.default.moveItem(at: tmpUrl, to: fileURL)
+                    completionHandler(true)
+                } catch {
+                    print("Failed to move \(tmpUrl) to \(fileURL)")
+                }
+            case .failed:
+                print("Failed: \(exportSession.error?.localizedDescription ?? "Unknown error")")
+            case .cancelled:
+                print("Export cancelled")
+            default:
+                print("Other Status")
+            }
+        })
+        completionHandler(false)
+        return
+    }
+
+    static func extractCoordinates(from locationString: String) -> (latitude: Double?, longitude: Double?) {
+        let regexPattern = "([+-]?\\d+\\.?\\d*)"
+
+        do {
+            let regex = try NSRegularExpression(pattern: regexPattern, options: [])
+            let matches = regex.matches(in: locationString, options: [], range: NSRange(location: 0, length: locationString.count))
+
+            if matches.count >= 2 {
+                let latitudeRange = matches[0].range
+                let longitudeRange = matches[1].range
+                let nsString = locationString as NSString
+
+                let latitude = Double(nsString.substring(with: latitudeRange))
+                let longitude = Double(nsString.substring(with: longitudeRange))
+
+                return (latitude, longitude)
+            }
+        } catch {
+            print("Regex error: \(error)")
+        }
+
+        return (nil, nil)
+    }
+
+    static func getLocationName(coordinatesString: String, completionHandler: @escaping (String?) -> Void) {
+        let (latitude, longitude) = extractCoordinates(from: coordinatesString)
+        guard let latitude = latitude, let longitude = longitude else {
+            completionHandler(nil)
+            return
+        }
+
+        // Initialize a CLLocation with the latitude and longitude
+        let location = CLLocation(latitude: latitude, longitude: longitude)
+
+        // Use CLGeocoder to perform reverse geocoding
+        let geocoder = CLGeocoder()
+        geocoder.reverseGeocodeLocation(location) { (placemarks, error) in
+            if let error = error {
+                print("Reverse geocoding failed with error: \(error.localizedDescription)")
+                completionHandler(nil)
+            } else if let placemark = placemarks?.first {
+                // Format the location string from placemark
+                let locationName = [placemark.locality, placemark.administrativeArea, placemark.country].compactMap { $0 }.joined(separator: ", ")
+                completionHandler(locationName)
+            } else {
+                completionHandler(nil)
+            }
         }
     }
 }

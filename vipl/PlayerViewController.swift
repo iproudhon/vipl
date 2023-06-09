@@ -59,6 +59,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     @IBOutlet weak var overlayView: OverlayView!
     @IBOutlet weak var poseButton: UIButton!
     @IBOutlet weak var soundButton: UIButton!
+    @IBOutlet weak var tagsLabel: UILabel!
 
     // .moz
     @objc private var pointCloudPlayer: PointCloudPlayer?
@@ -196,6 +197,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                             }
                             self.player.replaceCurrentItem(with: AVPlayerItem(url: orgUrl))
                             self.setAssetId()
+                            self.showInfo()
                             DispatchQueue.global(qos: .background).async {
                                 try? self.poseCollection.load(poser: self.poser1, asset: AVAsset(url: orgUrl))
                             }
@@ -273,12 +275,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                 (self.orientation, self.position, self.transform, self.reverseTransform) = asset.videoOrientation()
             }
             player.playImmediately(atRate: playSpeed)
-
-            DispatchQueue.main.async {
-                if let asset = self.player.currentItem?.asset {
-                    self.log(asset.info())
-                }
-            }
+            self.showInfo()
         } else {
             self.sceneView.isHidden = false
             initSceneView()
@@ -448,6 +445,12 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
 
         self.dismissButton.frame.origin = CGPoint(x: rect.minX, y: rect.minY)
         self.menuButton.frame.origin = CGPoint(x: rect.width - self.menuButton.frame.size.width, y: rect.minY)
+        x = self.dismissButton.frame.origin.x + self.dismissButton.frame.width
+        self.tagsLabel.frame = CGRect(x: x,
+                                      y: self.dismissButton.frame.origin.y,
+                                      width: self.menuButton.frame.origin.x - x,
+                                      height: self.dismissButton.frame.height)
+        self.tagsLabel.text = ""
 
         let height = CGFloat(200)
         y = self.scrollView.frame.origin.y + self.scrollView.frame.height - height
@@ -519,6 +522,12 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     func setupMainMenu() {
         var options = [UIAction]()
         var str: String
+        options.append(UIAction(title: "Edit Tags", state: .off, handler: {_ in
+            self.editTags()
+        }))
+        options.append(UIAction(title: "Show Location in Maps", state: .off, handler: {_ in
+            self.openMaps()
+        }))
         str = self.textLogView.isHidden ? "Show Logs" : "Hide Logs"
         options.append(UIAction(title: str, state: .off, handler: {_ in
             self.textLogView.isHidden = !self.textLogView.isHidden
@@ -1067,6 +1076,97 @@ extension PlayerViewController {
 }
 
 extension PlayerViewController {
+    func stringToDate(timeString: String) -> Date? {
+        // ISO 8601 format
+        let isoFormatter = ISO8601DateFormatter()
+        if let date = isoFormatter.date(from: timeString) {
+            return date
+        }
+
+        // List of common date formats
+        let formats = [
+            "yyyy-MM-dd'T'HH:mm:ssZ",
+            "yyyy/MM/dd HH:mm:ss",
+            "MM-dd-yyyy HH:mm",
+            "MMM d, yyyy, h:mm a"
+        ]
+
+        let dateFormatter = DateFormatter()
+        for format in formats {
+            dateFormatter.dateFormat = format
+            if let date = dateFormatter.date(from: timeString) {
+                return date
+            }
+        }
+
+        return nil
+    }
+
+    func showInfo() {
+        DispatchQueue.main.async {
+            if let asset = self.player.currentItem?.asset {
+                let (text, info) = asset.info()
+                if let text = text {
+                    self.log(text)
+                }
+                if let info = info {
+                    var text = ""
+                    if let desc = info["description"] as? String {
+                        text = desc
+                    }
+                    if let date = info["creation-date"] as? String,
+                       let date = self.stringToDate(timeString: date) {
+                        let dateFormatter = DateFormatter()
+                        dateFormatter.dateStyle = .medium
+                        dateFormatter.timeStyle = .none
+                        if text.count > 0 {
+                            text += " "
+                        }
+                        text += dateFormatter.string(from: date)
+                    }
+                    self.tagsLabel.text = text
+                }
+            }
+        }
+    }
+
+    func editTags() {
+        if let asset = self.player.currentItem?.asset {
+            var desc: String?
+            let (_, info) = asset.info()
+            if let info = info {
+                if let text = info["description"] as? String?{
+                    desc = text
+                }
+            }
+
+            let alertController = UIAlertController(title: "Edit Tags", message: nil, preferredStyle: .alert)
+            alertController.addTextField { (textField) in
+                textField.text = desc ?? ""
+            }
+
+            let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+            alertController.addAction(cancelAction)
+
+            let okAction = UIAlertAction(title: "OK", style: .default) { _ in
+                if let textField = alertController.textFields?.first,
+                   let url = (asset as? AVURLAsset)?.url {
+                    desc = textField.text
+                    AVAsset.setDescription(fileURL: url, description: desc ?? "") { success in
+                        DispatchQueue.main.async {
+                            self.player.replaceCurrentItem(with: AVPlayerItem(url: url))
+                            self.setAssetId()
+                            self.showInfo()
+                        }
+                    }
+                }
+            }
+            alertController.addAction(okAction)
+
+            self.present(alertController, animated: true, completion: nil)
+        }
+    }
+
     func log(_ msg: String) {
         let max = 20000
         DispatchQueue.main.async {
@@ -1081,5 +1181,32 @@ extension PlayerViewController {
             }
         }
         print(msg)
+    }
+
+    func openMaps() {
+        if let asset = self.player.currentItem?.asset {
+            let (_, info) = asset.info()
+            guard let info = info, let coordinatesString = info["location"] as? String else {
+                // TODO: error dialog using UIAlertController
+                return
+            }
+            let (latitude, longitude) = AVAsset.extractCoordinates(from: coordinatesString)
+            guard let latitude = latitude, let longitude = longitude else {
+                // TODO: error dialog using UIAlertController
+                return
+            }
+
+            // Create the URL string with the coordinates
+            let urlString = "http://maps.apple.com/?q=\(latitude),\(longitude)"
+
+            // Convert the string into URL object
+            if let url = URL(string: urlString) {
+                // Check if the URL can be opened
+                if UIApplication.shared.canOpenURL(url) {
+                    // Open the URL
+                    UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                }
+            }
+        }
     }
 }
