@@ -77,9 +77,20 @@ class SwingItem {
         self.description = description
         self.duration = duration
     }
+
+    func has(tags: [String]?) -> Bool {
+        guard let tags = tags else { return true }
+        if tags.count == 0 {
+            return true
+        }
+        guard let desc = self.description?.lowercased() else { return false }
+        return tags.contains { tag in
+            desc.contains(tag.lowercased())
+        }
+    }
 }
 
-class CollectionViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout, PHPickerViewControllerDelegate, UIDocumentPickerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+class CollectionViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout, PHPickerViewControllerDelegate, UIDocumentPickerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UITextFieldDelegate {
     
     @IBOutlet weak var collectionView: UICollectionView!
     @IBOutlet weak var flowLayout: UICollectionViewFlowLayout!
@@ -96,7 +107,10 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
 
     private var dirMonitor: FolderMonitor?
     private var swingItems: [SwingItem]?
+    private var filteredItems: [SwingItem]?
     private var dirModifiedTime: Date?
+
+    private var tags: [String] = []
     
     // pickers
     private var imagePicker: UIImagePickerController?
@@ -115,6 +129,7 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
 
         DispatchQueue.main.async {
             (self.swingItems, self.dirModifiedTime) = self.loadVideos()
+            self.filteredItems = self.swingItems?.filter { $0.has(tags: self.tags) }
             self.collectionView.reloadData()
         }
     }
@@ -131,6 +146,7 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
             self.collectionView.reloadData()
             if self.dirUpdated() {
                 (self.swingItems, self.dirModifiedTime) = self.loadVideos()
+                self.filteredItems = self.swingItems?.filter { $0.has(tags: self.tags) }
             }
             self.monitorDir()
 
@@ -169,6 +185,7 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
         y = rect.minY
         self.textField.frame = CGRect(x: x, y: y, width: rect.width - CGFloat(2 * buttonSize), height: self.textField.frame.height)
         x += self.textField.frame.width
+        self.textField.delegate = self
 
         self.searchButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonSize), height: CGFloat(buttonSize))
         x += self.searchButton.frame.width
@@ -202,6 +219,7 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
     @objc func refresh(_ sender: Any) {
         DispatchQueue.main.async {
             (self.swingItems, self.dirModifiedTime) = self.loadVideos()
+            self.filteredItems = self.swingItems?.filter { $0.has(tags: self.tags) }
             self.collectionView.reloadData()
             self.refreshControl.endRefreshing()
         }
@@ -212,10 +230,25 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
         let interspace = Double(numberOfCellsPerRow - 1) * Double(flowLayout.minimumInteritemSpacing)
         let width = CGFloat(Int(totalwidth - interspace) / numberOfCellsPerRow)
         var height = width
-        if let dims = swingItems?[indexPath[1]].dimensions {
+        if let dims = filteredItems?[indexPath[1]].dimensions {
             height = dims.height * width / dims.width
         }
         return CGSizeMake(width, height)
+    }
+
+    @IBAction func applyTags(_ sender: Any) {
+        self.tags = self.textField.text?.components(separatedBy: " ") ?? []
+        if self.tags.count == 1 && self.tags[0].count == 0 {
+            self.tags = []
+        }
+        self.textField.resignFirstResponder()
+        self.filteredItems = self.swingItems?.filter { $0.has(tags: self.tags) }
+        self.collectionView.reloadData()
+    }
+
+    func textFieldShouldReturn(_ sender: UITextField) -> Bool {
+        applyTags(sender)
+        return false
     }
 }
 
@@ -253,6 +286,7 @@ extension CollectionViewController {
         _ = self.dirMonitor?.observe(url: dir) {
             let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             (self.swingItems, self.dirModifiedTime) = self.loadVideos()
+            self.filteredItems = self.swingItems?.filter { $0.has(tags: self.tags) }
             self.collectionView.reloadData()
         }
     }
@@ -447,7 +481,7 @@ extension CollectionViewController {
     }
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return swingItems?.count ?? 0
+        return filteredItems?.count ?? 0
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
@@ -462,8 +496,8 @@ extension CollectionViewController {
         cell.img.frame.origin = CGPoint(x: 0, y: 0)
         cell.label.frame = CGRect(x: 0, y: cell.frame.size.height -  cell.label.frame.size.height, width: cell.frame.size.width, height: cell.label.frame.size.height)
         cell.label.isHidden = false
-        cell.label.text = (swingItems?[ix].duration?.toDurationString(withSubSeconds: true) ?? "") + " " + (swingItems?[ix].description ?? "")
-        cell.swingItem = swingItems?[ix]
+        cell.label.text = (filteredItems?[ix].duration?.toDurationString(withSubSeconds: true) ?? "") + " " + (filteredItems?[ix].description ?? "")
+        cell.swingItem = filteredItems?[ix]
         DispatchQueue.main.async {
             if let swingItem = cell.swingItem, let url = swingItem.url {
                 cell.img.image = CollectionViewController.getThumbnail(url: url)
