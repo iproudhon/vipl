@@ -74,8 +74,10 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
     private var capturedMovieUrl: URL?
     private var tmpMovieUrl: URL?
 
-    private var showPose: Bool = true
+    private var showPose: Bool = false
     private var poser = Poser()
+    private var poserTime: Date?
+    private var poserTimeThreshold: TimeInterval = 0.05
 
     private var useGestureSwitch = true
     private var useGestureTime: Date?
@@ -126,7 +128,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         if locationManager.authorizationStatus == .notDetermined {
             locationManager.requestWhenInUseAuthorization()
         }
-        _ = locationManager.location
+        locationManager.startUpdatingLocation()
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             break
@@ -377,7 +379,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
 
         // TODO: unused yet
         let metadataOutput = AVCaptureMetadataOutput()
-        // metadataOutput.setMetadataObjectsDelegate(self, queue: self.sessionQueue)
+        metadataOutput.setMetadataObjectsDelegate(self, queue: self.sessionQueue)
 
         let audioOutput = AVCaptureAudioDataOutput()
         audioOutput.setSampleBufferDelegate(self, queue: self.sessionQueue)
@@ -398,6 +400,9 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
                 connection.preferredVideoStabilizationMode = .auto
             }
         }
+        // if self.session.canAddOutput(metadataOutput) {
+        //     self.session.addOutput(metadataOutput)
+        // }
 
         self.videoOutput = videoOutput
         self.depthDataOutput = depthDataOutput
@@ -1147,6 +1152,13 @@ extension CaptureViewController {
             url = FileSystemHelper.getNextFileName(ext: "mov")!
         }
 
+        // update location
+        if let tmpUrl = self.tmpMovieUrl {
+            AVAsset.setMetadata(fileURL: tmpUrl, description: nil, location: self.locationManager.location) { success in
+                // do nothing
+            }
+        }
+
         // TODO: error handling
         try? FileManager.default.moveItem(at: self.tmpMovieUrl!, to: url)
         self.capturedMovieUrl = url
@@ -1167,59 +1179,65 @@ extension CaptureViewController {
                 self.movieOut?.append(videoData.sampleBuffer, for: .video)
 
                 if self.showPose {
-                    DispatchQueue.main.async {
-                        let poser = self.poser
-                        if let pixelBuffer = CMSampleBufferGetImageBuffer(videoData.sampleBuffer) {
-                            var transform = self.reverseTransform
-                            if self.ignoreOrientation {
-                                if !self.isMirrored {
-                                    transform = CGAffineTransformIdentity
-                                } else {
-                                    transform = CGAffineTransform(-1, 0, 0, 1, CGFloat(CVPixelBufferGetWidth(pixelBuffer)), 0)
+                    if let lastTime = self.poserTime,
+                       Date().timeIntervalSince(lastTime) < self.poserTimeThreshold {
+                        // do nothing
+                    } else {
+                        self.poserTime = Date()
+                        DispatchQueue.main.async {
+                            let poser = self.poser
+                            if let pixelBuffer = CMSampleBufferGetImageBuffer(videoData.sampleBuffer) {
+                                var transform = self.reverseTransform
+                                if self.ignoreOrientation {
+                                    if !self.isMirrored {
+                                        transform = CGAffineTransformIdentity
+                                    } else {
+                                        transform = CGAffineTransform(-1, 0, 0, 1, CGFloat(CVPixelBufferGetWidth(pixelBuffer)), 0)
+                                    }
                                 }
-                            }
-                            poser.runModel(assetId: nil, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: transform!, time: CMTime.zero, freeze: false) { (golfer) in
-                                let isRecording = (self.movieOut?.isRecording ?? false) || self.pointCloudOut != nil
-                                if isRecording {
-                                    return
-                                }
-                                if let lastTime = self.useGestureTime,
-                                   Date().timeIntervalSince(lastTime) < self.useGestureTimeThreshold {
-                                    // do nothing
-                                } else {
-                                    if let golfer = golfer,
-                                       golfer.leftWrist.score >= 0.3 && golfer.leftElbow.score >= 0.3 && golfer.leftShoulder.score >= 0.3 && golfer.rightWrist.score >= 0.3 && golfer.rightElbow.score >= 0.3 && golfer.rightShoulder.score >= 0.3 &&
-                                        self.isXMark(leftWrist: golfer.leftWrist.pt, leftElbow: golfer.leftElbow.pt, leftShoulder: golfer.leftShoulder.pt, rightWrist: golfer.rightWrist.pt, rightElbow: golfer.rightElbow.pt, rightShoulder: golfer.rightShoulder.pt) {
-                                        DispatchQueue.main.async {
-                                            self.record_stop(self.recordButton!)
-                                            self.useGestureTime = Date()
-                                            self.flashTorch(count: 2, millis: 100)
-                                            print("X Mark")
+                                poser.runModel(assetId: nil, targetView: self.overlayView, pixelBuffer: pixelBuffer, transform: transform!, time: CMTime.zero, freeze: false) { (golfer) in
+                                    let isRecording = (self.movieOut?.isRecording ?? false) || self.pointCloudOut != nil
+                                    if isRecording {
+                                        return
+                                    }
+                                    if let lastTime = self.useGestureTime,
+                                       Date().timeIntervalSince(lastTime) < self.useGestureTimeThreshold {
+                                        // do nothing
+                                    } else {
+                                        if let golfer = golfer,
+                                           golfer.leftWrist.score >= 0.3 && golfer.leftElbow.score >= 0.3 && golfer.leftShoulder.score >= 0.3 && golfer.rightWrist.score >= 0.3 && golfer.rightElbow.score >= 0.3 && golfer.rightShoulder.score >= 0.3 &&
+                                            self.isXMark(leftWrist: golfer.leftWrist.pt, leftElbow: golfer.leftElbow.pt, leftShoulder: golfer.leftShoulder.pt, rightWrist: golfer.rightWrist.pt, rightElbow: golfer.rightElbow.pt, rightShoulder: golfer.rightShoulder.pt) {
+                                            DispatchQueue.main.async {
+                                                self.record_stop(self.recordButton!)
+                                                self.useGestureTime = Date()
+                                                self.flashTorch(count: 2, millis: 100)
+                                                print("X Mark")
+                                            }
                                         }
                                     }
                                 }
-                            }
 
-                            /* TODO: autofocus on found figure
-                             { (person) in
-                                guard let person = person else { return }
-                                var leftHip, rightHip: KeyPoint?
-                                for p in person.keyPoints {
-                                    if p.bodyPart == .leftHip {
-                                        leftHip = p
-                                    } else if p.bodyPart == .rightHip {
-                                        rightHip = p
-                                    }
-                                }
-                                if let leftHip = leftHip,
-                                   let rightHip = rightHip {
-                                    let pt = CGPoint(x: (leftHip.coordinate.x + rightHip.coordinate.x), y: (leftHip.coordinate.y + rightHip.coordinate.y))
-                                    DispatchQueue.main.async {
-                                        self.mayFocus(point: pt)
-                                    }
-                                }
+                                /* TODO: autofocus on found figure
+                                 { (person) in
+                                 guard let person = person else { return }
+                                 var leftHip, rightHip: KeyPoint?
+                                 for p in person.keyPoints {
+                                 if p.bodyPart == .leftHip {
+                                 leftHip = p
+                                 } else if p.bodyPart == .rightHip {
+                                 rightHip = p
+                                 }
+                                 }
+                                 if let leftHip = leftHip,
+                                 let rightHip = rightHip {
+                                 let pt = CGPoint(x: (leftHip.coordinate.x + rightHip.coordinate.x), y: (leftHip.coordinate.y + rightHip.coordinate.y))
+                                 DispatchQueue.main.async {
+                                 self.mayFocus(point: pt)
+                                 }
+                                 }
+                                 }
+                                 */
                             }
-                             */
                         }
                     }
                 }
@@ -1256,14 +1274,12 @@ extension CaptureViewController {
             }
         }
 
-        /*
-        if let syncedMetaData = synchronizedDataCollection.synchronizedData(for: metadataOutput) as? AVCaptureSynchronizedMetadataObjectData {
-            var face: AVMetadataObject? = nil
-            if let firstFace = syncedMetaData?.metadataObjects.first {
-                face = videoDataOutput.transformedMetadataObject(for: firstFace, connection: videoConnection)
-            }
-        }
-        */
+        // if let syncedMetaData = synchronizedDataCollection.synchronizedData(for: metadataOutput) as? AVCaptureSynchronizedMetadataObjectData {
+        //     var face: AVMetadataObject? = nil
+        //     if let firstFace = syncedMetaData.metadataObjects.first {
+        //         face = videoDataOutput.transformedMetadataObject(for: firstFace, connection: videoConnection)
+        //     }
+        // }
         return
     }
 
@@ -1732,7 +1748,7 @@ extension CaptureViewController {
     func initGravityView() {
         // Check if accelerometer data is available
         if motionManager.isDeviceMotionAvailable {
-            motionManager.deviceMotionUpdateInterval = 0.01
+            motionManager.deviceMotionUpdateInterval = 0.05
             motionManager.startDeviceMotionUpdates(to: .main) { (data, error) in
                 if let validData = data {
                     // Update the vector view

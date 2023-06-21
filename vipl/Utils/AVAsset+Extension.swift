@@ -120,7 +120,7 @@ extension AVAsset {
         }
     }
 
-    public static func setDescription(fileURL: URL, description: String, completionHandler: @escaping (Bool) -> Void) {
+    public static func setMetadata(fileURL: URL, description: String?, location: CLLocation?, completionHandler: @escaping (Bool) -> Void) {
         // Load the asset
         let asset = AVAsset(url: fileURL)
 
@@ -134,18 +134,34 @@ extension AVAsset {
         // Fetch existing metadata
         var metadata = asset.metadata
 
-        // Create metadata item for description
-        let descriptionMetadataItem = AVMutableMetadataItem()
-        descriptionMetadataItem.key = AVMetadataKey.quickTimeMetadataKeyDescription as (NSCopying & NSObjectProtocol)?
-        descriptionMetadataItem.keySpace = AVMetadataKeySpace.quickTimeMetadata
-        descriptionMetadataItem.value = description as (NSCopying & NSObjectProtocol)?
-        descriptionMetadataItem.locale = Locale.current
+        if let description = description {
+            // Create metadata item for description
+            let descriptionMetadataItem = AVMutableMetadataItem()
+            descriptionMetadataItem.key = AVMetadataKey.quickTimeMetadataKeyDescription as (NSCopying & NSObjectProtocol)?
+            descriptionMetadataItem.keySpace = AVMetadataKeySpace.quickTimeMetadata
+            descriptionMetadataItem.value = description as (NSCopying & NSObjectProtocol)?
+            descriptionMetadataItem.locale = Locale.current
 
-        // Remove existing description metadata item if it exists
-        metadata = metadata.filter { !($0.key as? String == AVMetadataKey.quickTimeMetadataKeyDescription.rawValue && $0.keySpace == .quickTimeMetadata) }
+            // Remove existing description metadata item if it exists
+            metadata = metadata.filter { !($0.key as? String == AVMetadataKey.quickTimeMetadataKeyDescription.rawValue && $0.keySpace == .quickTimeMetadata) }
 
-        // Append new description metadata item
-        metadata.append(descriptionMetadataItem)
+            // Append new description metadata item
+            metadata.append(descriptionMetadataItem)
+        }
+        if let location = location {
+            let metadataItem = AVMutableMetadataItem()
+            metadataItem.key = AVMetadataKey.quickTimeMetadataKeyLocationISO6709 as (NSCopying & NSObjectProtocol)?
+            metadataItem.keySpace = AVMetadataKeySpace.quickTimeMetadata
+            metadataItem.value = String(format: "%+08.4lf%+09.4lf%+.0lf/",
+                                        location.coordinate.latitude,
+                                        location.coordinate.longitude,
+                                        location.altitude) as (NSCopying & NSObjectProtocol)?
+
+            // Remove any existing location metadata
+            metadata = metadata.filter { !($0.key as? String == AVMetadataKey.quickTimeMetadataKeyLocationISO6709.rawValue && $0.keySpace == AVMetadataKeySpace.quickTimeMetadata) }
+            // Append the new location metadata
+            metadata.append(metadataItem)
+        }
 
         // Set metadata to export session
         exportSession.metadata = metadata
@@ -165,8 +181,15 @@ extension AVAsset {
             case .completed:
                 print("Export complete")
                 do {
+                    let originalAttributes = try? FileManager.default.attributesOfItem(atPath: fileURL.path)
+                    let creationDate = originalAttributes?[.creationDate] as? Date
+                    let modificationDate = originalAttributes?[.modificationDate] as? Date
                     try FileManager.default.removeItem(at: fileURL)
                     try FileManager.default.moveItem(at: tmpUrl, to: fileURL)
+                    if let creationDate = creationDate, let modificationDate = modificationDate {
+                        let attributes: [FileAttributeKey: Any] = [.creationDate: creationDate, .modificationDate: modificationDate]
+                        try FileManager.default.setAttributes(attributes, ofItemAtPath: fileURL.path)
+                    }
                     completionHandler(true)
                 } catch {
                     print("Failed to move \(tmpUrl) to \(fileURL)")

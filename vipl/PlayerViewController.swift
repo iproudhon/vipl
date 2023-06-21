@@ -1152,7 +1152,7 @@ extension PlayerViewController {
                 if let textField = alertController.textFields?.first,
                    let url = (asset as? AVURLAsset)?.url {
                     desc = textField.text
-                    AVAsset.setDescription(fileURL: url, description: desc ?? "") { success in
+                    AVAsset.setMetadata(fileURL: url, description: desc ?? "", location: nil) { success in
                         DispatchQueue.main.async {
                             self.player.replaceCurrentItem(with: AVPlayerItem(url: url))
                             self.setAssetId()
