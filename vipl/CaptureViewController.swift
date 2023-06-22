@@ -56,6 +56,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
     private var reverseTransform: CGAffineTransform! = CGAffineTransformIdentity
     private var isMirrored: Bool = false
 
+    @IBOutlet private weak var containerView: UIView!
     @IBOutlet private weak var previewView: CapturePreviewView!
     @IBOutlet private weak var camerasMenu: UIButton!
     @IBOutlet private weak var menuButton: UIButton!
@@ -239,21 +240,23 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         var x, y, height: CGFloat
 
         height = rect.height - CGFloat(buttonSize + 2 * buttonMargin)
-        self.previewView.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: height)
+        self.containerView.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: height)
+        self.previewView.frame = CGRect(x: 0, y: 0, width: rect.width, height: height)
+        self.previewView.layer.zPosition = -100000
         self.overlayView.frame = CGRect(x: 0, y: 0, width: self.previewView.frame.width, height: self.previewView.frame.height)
         self.gravityView.frame = CGRect(x: 0, y: 0, width: self.previewView.frame.width, height: self.previewView.frame.height)
         self.xButton.frame.origin = CGPoint(x: 0, y: 0)
         x = CGFloat(buttonMargin) * 2 + self.xButton.frame.width
         self.camerasMenu.frame.origin = CGPoint(x: x, y: CGFloat(buttonMargin))
-        self.menuButton.frame.origin = CGPoint(x: self.previewView.frame.width - self.menuButton.frame.size.width, y: 0)
-        self.durationLabel.frame.origin = CGPoint(x: (self.previewView.frame.width - self.durationLabel.frame.width) / 2, y: self.camerasMenu.frame.origin.y + self.camerasMenu.frame.height + 10)
+        self.menuButton.frame.origin = CGPoint(x: self.containerView.frame.width - self.menuButton.frame.size.width, y: 0)
+        self.durationLabel.frame.origin = CGPoint(x: (self.containerView.frame.width - self.durationLabel.frame.width) / 2, y: self.camerasMenu.frame.origin.y + self.camerasMenu.frame.height + 10)
 
-        y = self.previewView.frame.origin.y + self.previewView.frame.height
+        y = self.containerView.frame.origin.y + self.containerView.frame.height
         height = rect.minY + rect.height - y
-        self.textLogView.frame = CGRect(x: rect.minX, y: self.previewView.frame.origin.y + self.previewView.frame.size.height, width: rect.width, height: height)
+        self.textLogView.frame = CGRect(x: rect.minX, y: self.containerView.frame.origin.y + self.containerView.frame.size.height, width: rect.width, height: height)
 
         x = rect.minX + (rect.width - CGFloat(buttonSize)) / 2
-        y = self.previewView.frame.origin.y + self.previewView.frame.size.height
+        y = self.containerView.frame.origin.y + self.containerView.frame.size.height
         y += ((rect.minY + rect.height - y) - CGFloat(buttonSize)) / 2
         self.recordButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonSize), height: CGFloat(buttonSize))
 
@@ -1748,15 +1751,37 @@ extension CaptureViewController {
     func initGravityView() {
         // Check if accelerometer data is available
         if motionManager.isDeviceMotionAvailable {
-            motionManager.deviceMotionUpdateInterval = 0.05
+            motionManager.deviceMotionUpdateInterval = 0.02
             motionManager.startDeviceMotionUpdates(to: .main) { (data, error) in
                 if let validData = data {
                     // Update the vector view
                     DispatchQueue.main.async {
                         self.gravityView.update(gravity: validData.gravity)
+
+                        // self.setPreviewGravity(gravity: validData.gravity)
+                        // self.gravityView.update(gravity: CMAcceleration(x: 0, y: -1.0, z: 0))
                     }
                 }
             }
         }
+    }
+
+    func setPreviewGravity(gravity: CMAcceleration) {
+        let pitch = atan2(-gravity.y, gravity.x) - .pi / 2.0
+        let roll = atan2(gravity.y, gravity.z) + .pi / 2.0
+
+        /*
+        // Construct the transformation matrix
+        var transform = CGAffineTransform.identity
+        transform = transform.rotated(by: -pitch) // Rotate around Z axis
+        transform = transform.concatenating(CGAffineTransform(a: 1, b: tan(roll), c: 0, d: 1, tx: 0, ty: 0)) // Shear to simulate rotation around X axis
+        // Apply the transform to the preview layer
+        self.previewView.layer.setAffineTransform(transform)
+         */
+
+        var transform = CATransform3DIdentity
+        transform = CATransform3DRotate(transform, -pitch, 0, 0, 1) // Rotate around Z axis for pitch
+        transform = CATransform3DRotate(transform, -roll, 1, 0, 0)  // Rotate around X axis for roll
+        self.previewView.layer.transform = transform
     }
 }
