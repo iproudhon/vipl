@@ -124,7 +124,6 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
 
         // register tap for captured video viewer
         capturedVideoView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(self.tapCapturedVideoView(_:))))
-        refreshCapturedVideoView()
 
         if locationManager.authorizationStatus == .notDetermined {
             locationManager.requestWhenInUseAuthorization()
@@ -197,6 +196,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
                 }
             }
         }
+        refreshCapturedVideoView()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
