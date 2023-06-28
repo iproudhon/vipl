@@ -15,14 +15,8 @@ class GravityView: UIView {
     let axisColor: CGColor = UIColor.green.cgColor
     let lineLength: CGFloat = 100
 
-    func rotate_0(x: CGFloat, y: CGFloat, pitch: Double, roll: Double) -> (CGFloat, CGFloat) {
-        let x2 = x - bounds.midX
-        let y2 = y - bounds.midY
-        var newX = x2 * CGFloat(cos(pitch)) - y2 * CGFloat(sin(pitch))
-        var newY = x2 * CGFloat(sin(pitch)) + y2 * CGFloat(cos(pitch))
-        newX += bounds.midX
-        newY += bounds.midY
-        return (newX, newY)
+    func getOrientation() -> UIInterfaceOrientation {
+        return self.window?.windowScene?.interfaceOrientation ?? .portrait
     }
 
     func rotate(x: CGFloat, y: CGFloat, z: CGFloat, pitch: Double, roll: Double) -> (CGFloat, CGFloat) {
@@ -30,7 +24,7 @@ class GravityView: UIView {
         transform = CATransform3DRotate(transform, pitch, 0, 0, 1)
         transform = CATransform3DRotate(transform, roll, 1, 0, 0)
 
-        var x = x - bounds.midX, y = y - bounds.midY, z = z, w = CGFloat(1)
+        let x = x - bounds.midX, y = y - bounds.midY, z = z, w = CGFloat(1)
         let nx = transform.m11 * x + transform.m21 * y + transform.m31 * z + transform.m41 * w
         let ny = transform.m12 * x + transform.m22 * y + transform.m32 * z + transform.m42 * w
         _ = transform.m13 * x + transform.m23 * y + transform.m33 * z + transform.m43 * w
@@ -38,7 +32,6 @@ class GravityView: UIView {
 
         return (nx/nw + bounds.midX, ny/nw + bounds.midY)
     }
-
 
     override func draw(_ rect: CGRect) {
         super.draw(rect)
@@ -48,9 +41,28 @@ class GravityView: UIView {
 
         // pitch and roll from the gravity vector
         // pitch is around z axis, roll is around x axis and vertical is -90 degrees
+        var gx = Double(0), gy = Double(0), gz = Double(0)
         if let gravity = gravityVector {
-            pitch = atan2(-gravity.y, gravity.x) - .pi / 2.0
-            roll = atan2(gravity.y, gravity.z) + .pi / 2.0
+            gz = gravity.z
+            switch getOrientation() {
+            case .portrait, .unknown:
+                gx = gravity.x
+                gy = gravity.y
+            case .portraitUpsideDown:
+                gx = gravity.x
+                gy = -gravity.y
+            case .landscapeLeft:
+                gx = gravity.y
+                gy = -gravity.x
+            case .landscapeRight:
+                gx = -gravity.y
+                gy = gravity.x
+            @unknown default:
+                fatalError()
+            }
+
+            pitch = atan2(-gy, gx) - .pi / 2.0
+            roll = atan2(gy, gz) + .pi / 2.0
 
             let delta = bounds.midY * CGFloat(sin(roll))
             deltaX = delta * CGFloat(sin(-pitch))
@@ -95,16 +107,16 @@ class GravityView: UIView {
         context.strokePath()
 
         // Draw the gravity vector
-        if let gravity = gravityVector {
+        if gravityVector != nil {
             context.beginPath()
             context.setLineWidth(5)
             context.setAlpha(0.5)
 
-            pt = CGPoint(x: center.x + CGFloat(gravity.x * lineLength), y: center.y + CGFloat(gravity.y * -lineLength))
+            pt = CGPoint(x: center.x + CGFloat(gx * lineLength), y: center.y + CGFloat(gy * -lineLength))
             context.setStrokeColor(gravityColor)
             context.move(to: pt)
             context.addLine(to: center)
-            pt = CGPoint(x: center.x + CGFloat(gravity.y * -lineLength), y: center.y + CGFloat(gravity.z * lineLength))
+            pt = CGPoint(x: center.x + CGFloat(gy * -lineLength), y: center.y + CGFloat(gz * lineLength))
             context.addLine(to: pt)
 
             context.strokePath()
