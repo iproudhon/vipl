@@ -1105,6 +1105,7 @@ extension PlayerViewController {
     func showInfo() {
         DispatchQueue.main.async {
             if let asset = self.player.currentItem?.asset {
+                self.log((asset as? AVURLAsset)?.url.path ?? "")
                 let (text, info) = asset.info()
                 if let text = text {
                     self.log(text)

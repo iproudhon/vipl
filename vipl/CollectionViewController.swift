@@ -111,7 +111,7 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
     private var dirModifiedTime: Date?
 
     private var tags: [String] = []
-    
+
     // pickers
     private var imagePicker: UIImagePickerController?
     private var documentPicker: UIDocumentPickerViewController?
@@ -126,12 +126,6 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
         
         collectionView.refreshControl = refreshControl
         refreshControl.addTarget(self, action: #selector(refresh(_:)), for: .valueChanged)
-
-        DispatchQueue.main.async {
-            (self.swingItems, self.dirModifiedTime) = self.loadVideos()
-            self.filteredItems = self.swingItems?.filter { $0.has(tags: self.tags) }
-            self.collectionView.reloadData()
-        }
     }
     
     override func viewDidLayoutSubviews() {
@@ -145,8 +139,9 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
         DispatchQueue.main.async {
             self.collectionView.reloadData()
             if self.dirUpdated() {
-                (self.swingItems, self.dirModifiedTime) = self.loadVideos()
-                self.filteredItems = self.swingItems?.filter { $0.has(tags: self.tags) }
+                DispatchQueue.global(qos: .userInitiated).async {
+                    self.loadVideos()
+                }
             }
             self.monitorDir()
 
@@ -218,9 +213,9 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
     
     @objc func refresh(_ sender: Any) {
         DispatchQueue.main.async {
-            (self.swingItems, self.dirModifiedTime) = self.loadVideos()
-            self.filteredItems = self.swingItems?.filter { $0.has(tags: self.tags) }
-            self.collectionView.reloadData()
+            DispatchQueue.global(qos: .userInitiated).async {
+                self.loadVideos()
+            }
             self.refreshControl.endRefreshing()
         }
     }
@@ -285,18 +280,63 @@ extension CollectionViewController {
         self.dirMonitor = FolderMonitor()
         _ = self.dirMonitor?.observe(url: dir) {
             let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            (self.swingItems, self.dirModifiedTime) = self.loadVideos()
-            self.filteredItems = self.swingItems?.filter { $0.has(tags: self.tags) }
-            self.collectionView.reloadData()
+            DispatchQueue.global(qos: .userInitiated).async {
+                self.loadVideos()
+            }
         }
     }
 
-    func loadVideos() -> ([SwingItem], Date) {
-        var swingItems: [SwingItem] = []
+    func insertItem(item: SwingItem) {
+        self.swingItems?.append(item)
+        guard item.has(tags: self.tags) else { return }
+
+        func insertionIndex(from: [SwingItem], of element: SwingItem, sortedBy: (SwingItem, SwingItem) -> Bool) -> Int {
+            var lo = 0
+            var hi = from.count
+            while lo < hi {
+                let mid = (lo + hi)/2
+                if sortedBy(element, from[mid]) {
+                    hi = mid
+                } else {
+                    lo = mid + 1
+                }
+            }
+            return lo
+        }
+        let index = insertionIndex(from: self.filteredItems!, of: item, sortedBy: {
+            $0.creationDate ?? Date() > $1.creationDate ?? Date()
+        })
+        self.filteredItems?.insert(item, at: index)
+        let indexPath = IndexPath(item: index, section: 0)
+        self.collectionView.insertItems(at: [indexPath])
+    }
+
+    func loadVideos() {
+        self.swingItems = []
+        self.filteredItems = []
+
+        DispatchQueue.main.async {
+            self.collectionView.reloadData()
+        }
+
         do {
-            let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let items = try FileManager.default.contentsOfDirectory(atPath: dir.path)
-            
+            let fileManager = FileManager.default
+            let dir = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            var (_, modifiedTime) = FileSystemHelper.fileTimes(url: dir)
+            if modifiedTime == nil {
+                modifiedTime = Date.distantPast
+            }
+
+            var items = try FileManager.default.contentsOfDirectory(atPath: dir.path)
+            var modifiedTimes: [String:Date] = [:]
+            for i in items {
+                let (_, mt) = FileSystemHelper.fileTimes(url: dir.appendingPathComponent(i))
+                modifiedTimes[i] = mt ?? Date.distantPast
+            }
+            items.sort {
+                modifiedTimes[$0] ?? Date.distantPast > modifiedTimes[$1] ?? Date.distantPast
+            }
+
             for item in items {
                 let url = dir.appendingPathComponent(item)
                 let ext = url.pathExtension
@@ -308,49 +348,19 @@ extension CollectionViewController {
                         os_log("invalid movie file: \(url.path)")
                         continue
                     }
-                    swingItems.append(swingItem)
+                    DispatchQueue.main.async {
+                        self.insertItem(item: swingItem)
+                    }
                 }
             }
-            swingItems.sort {
-                $0.creationDate! > $1.creationDate!
-            }
-            var (_, modifiedTime) = FileSystemHelper.fileTimes(url: dir)
-            if modifiedTime == nil {
-                modifiedTime = Date(timeIntervalSince1970: 0)
-            }
-            return (swingItems, modifiedTime!)
+            self.dirModifiedTime = modifiedTime
         } catch {
             print("Directory listing failed: \(error)")
-            return ([], Date(timeIntervalSince1970: 0))
         }
     }
-    
+
     static func getThumbnail(url: URL) -> UIImage? {
-        if url.pathExtension != "moz" {
-            let asset = AVAsset(url: url)
-            let assetImgGenerate = AVAssetImageGenerator(asset: asset)
-            assetImgGenerate.appliesPreferredTrackTransform = true
-            let pointOfTime = CMTimeMakeWithSeconds(0.1, preferredTimescale: 600)
-            do {
-                let img = try assetImgGenerate.copyCGImage(at: pointOfTime, actualTime: nil)
-                return UIImage(cgImage: img)
-            } catch {
-                print("\(error.localizedDescription)")
-                return nil
-            }
-        } else {
-            let r = PointCloudRecorder()
-            if !r.open(url.path, forWrite: false) {
-                return nil
-            }
-            if let info = r.info(),
-               let calibrationInfo = FrameCalibrationInfo.fromJson(data: info),
-               let colors = r.colors(),
-               let cgImg = PointCloud2.bytesToImage(width: calibrationInfo.width, height: calibrationInfo.height, colors: colors) {
-                return UIImage(cgImage: cgImg)
-            }
-            return nil
-        }
+        return ThumbnailCache.shared.getThumbnail(for: url)
     }
 
     static func getSwingInfo(item: SwingItem, url: URL) {

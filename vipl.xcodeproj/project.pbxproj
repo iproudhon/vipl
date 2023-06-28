@@ -32,6 +32,7 @@
 		852AA713296CAB9000107AF7 /* CMTime+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 852AA712296CAB9000107AF7 /* CMTime+Extension.swift */; };
 		853F4D75296A861D0093C3AF /* PointCloudPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 853F4D74296A861D0093C3AF /* PointCloudPlayer.swift */; };
 		853F4D77296A91210093C3AF /* RingBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 853F4D76296A91210093C3AF /* RingBuffer.swift */; };
+		8565567E2A4BC50A00390708 /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8565567D2A4BC50A00390708 /* ThumbnailCache.swift */; };
 		857D12B3296EB55C006A8BE5 /* PointCloudRecorder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 857D12B2296EB55C006A8BE5 /* PointCloudRecorder.cpp */; };
 		857D12B8296F394F006A8BE5 /* PointCloudRecorderObjc.mm in Sources */ = {isa = PBXBuildFile; fileRef = 857D12B7296F394F006A8BE5 /* PointCloudRecorderObjc.mm */; };
 		857D12BA2970FD0F006A8BE5 /* FileSystemHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 857D12B92970FD0F006A8BE5 /* FileSystemHelper.swift */; };
@@ -150,6 +151,7 @@
 		852AA712296CAB9000107AF7 /* CMTime+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CMTime+Extension.swift"; sourceTree = "<group>"; };
 		853F4D74296A861D0093C3AF /* PointCloudPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudPlayer.swift; sourceTree = "<group>"; };
 		853F4D76296A91210093C3AF /* RingBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingBuffer.swift; sourceTree = "<group>"; };
+		8565567D2A4BC50A00390708 /* ThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };
 		857D12B1296EB55B006A8BE5 /* PointCloudRecorder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PointCloudRecorder.h; sourceTree = "<group>"; };
 		857D12B2296EB55C006A8BE5 /* PointCloudRecorder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PointCloudRecorder.cpp; sourceTree = "<group>"; };
 		857D12B4296F353A006A8BE5 /* PointCloudRecorderObjc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PointCloudRecorderObjc.h; sourceTree = "<group>"; };
@@ -365,6 +367,7 @@
 				851040D729540F8E00320EC7 /* AVPlayerController.swift */,
 				851040D52951B1FE00320EC7 /* RangeSlider.swift */,
 				858EABDC2A30049A00C81389 /* GravityView.swift */,
+				8565567D2A4BC50A00390708 /* ThumbnailCache.swift */,
 				85AC1B11293EBAEF00CA4556 /* Assets.xcassets */,
 				85AC1B16293EBAEF00CA4556 /* Info.plist */,
 				85C8C68A295FCEAA00012236 /* CoreMLHelpers */,
@@ -660,6 +663,7 @@
 				857D12B8296F394F006A8BE5 /* PointCloudRecorderObjc.mm in Sources */,
 				851040F5295C1B4200320EC7 /* CVPixelBuffer+TFLite.swift in Sources */,
 				85C8C69C295FCECD00012236 /* CGImage+RawBytes.swift in Sources */,
+				8565567E2A4BC50A00390708 /* ThumbnailCache.swift in Sources */,
 				851040ED295C1B2800320EC7 /* MoveNet.swift in Sources */,
 				85C8C6AB295FCECD00012236 /* CVPixelBuffer+Rotate.swift in Sources */,
 				85C8C69F295FCECD00012236 /* Array+Extensions.swift in Sources */,
