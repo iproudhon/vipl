@@ -128,7 +128,6 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         if locationManager.authorizationStatus == .notDetermined {
             locationManager.requestWhenInUseAuthorization()
         }
-        locationManager.startUpdatingLocation()
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             break
@@ -196,6 +195,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
                 }
             }
         }
+        locationManager.startUpdatingLocation()
         refreshCapturedVideoView()
     }
 
@@ -215,6 +215,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
                 self.removeObservers()
             }
         }
+        locationManager.stopUpdatingLocation()
         super.viewWillDisappear(animated)
     }
     

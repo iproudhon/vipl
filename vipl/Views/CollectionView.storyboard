@@ -4,6 +4,7 @@
     <dependencies>
         <deployment identifier="iOS"/>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="21679"/>
+        <capability name="Image references" minToolsVersion="12.0"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="UIMenu" message="Requires Xcode 11 or later." minToolsVersion="11.0" requiredIntegratedClassName="UICommandDiff"/>
@@ -29,7 +30,7 @@
                                 <rect key="frame" x="344" y="57" width="21" height="21"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
-                                <state key="normal" image="plus.magnifyingglass" catalog="system"/>
+                                <state key="normal" image="magnifyingglass" catalog="system"/>
                                 <connections>
                                     <action selector="applyTags:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="0AJ-2Q-CHJ"/>
                                 </connections>
@@ -46,7 +47,7 @@
                                 <state key="normal" image="list.dash" catalog="system"/>
                             </button>
                             <collectionView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" dataMode="prototypes" translatesAutoresizingMaskIntoConstraints="NO" id="nAZ-LJ-kjC">
-                                <rect key="frame" x="0.0" y="92" width="414" height="722"/>
+                                <rect key="frame" x="0.0" y="92" width="414" height="771"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                                 <collectionViewFlowLayout key="collectionViewLayout" automaticEstimatedItemSize="YES" minimumLineSpacing="10" minimumInteritemSpacing="10" id="Onb-Do-412">
@@ -85,11 +86,20 @@
                                 </cells>
                             </collectionView>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="pKN-Yx-pSU">
-                                <rect key="frame" x="187" y="822" width="40" height="40"/>
+                                <rect key="frame" x="305" y="802" width="60" height="60"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="12"/>
                                 <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
-                                <state key="normal" backgroundImage="record.circle.fill" catalog="system"/>
+                                <state key="normal">
+                                    <imageReference key="image" image="video.circle.fill" catalog="system" renderingMode="hierarchical">
+                                        <hierarchicalColors>
+                                            <color systemColor="systemBackgroundColor"/>
+                                            <color systemColor="systemOrangeColor"/>
+                                            <color systemColor="systemOrangeColor"/>
+                                        </hierarchicalColors>
+                                    </imageReference>
+                                    <preferredSymbolConfiguration key="preferredSymbolConfiguration" configurationType="pointSize" pointSize="40" scale="large"/>
+                                </state>
                                 <connections>
                                     <action selector="capture:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="l8C-SZ-u95"/>
                                 </connections>
@@ -114,10 +124,13 @@
     </scenes>
     <resources>
         <image name="list.dash" catalog="system" width="128" height="85"/>
-        <image name="plus.magnifyingglass" catalog="system" width="128" height="117"/>
-        <image name="record.circle.fill" catalog="system" width="128" height="123"/>
+        <image name="magnifyingglass" catalog="system" width="128" height="117"/>
+        <image name="video.circle.fill" catalog="system" width="128" height="123"/>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+        </systemColor>
+        <systemColor name="systemOrangeColor">
+            <color red="1" green="0.58431372549019611" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
     </resources>
 </document>

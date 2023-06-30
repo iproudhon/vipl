@@ -173,7 +173,7 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
                           y: view.safeAreaInsets.top,
                           width: view.bounds.width - (view.safeAreaInsets.left + view.safeAreaInsets.right),
                           height: view.bounds.height - (view.safeAreaInsets.top + view.safeAreaInsets.bottom))
-        let buttonSize = 34, captureButtonSize = 40
+        let buttonSize = 34, captureButtonSize = 60
         var x, y: CGFloat
 
         x = rect.minX
@@ -190,12 +190,11 @@ class CollectionViewController: UIViewController, UICollectionViewDataSource, UI
 
         x = rect.minX
         y = rect.minY + self.textField.frame.height
-        let height = rect.height - self.textField.frame.height - CGFloat(captureButtonSize * 4 / 3)
+        let height = rect.height - self.textField.frame.height + view.safeAreaInsets.bottom
         self.collectionView.frame = CGRect(x: x, y: y, width: rect.width, height: height)
 
-        x = rect.minX + (rect.width - CGFloat(captureButtonSize)) / 2
-        y = self.collectionView.frame.origin.y + self.collectionView.frame.height
-        y += (rect.minY + rect.height - y - CGFloat(captureButtonSize)) / 2
+        x = rect.maxX + view.safeAreaInsets.right - CGFloat(captureButtonSize) * 3 / 2
+        y = rect.maxY + view.safeAreaInsets.bottom - CGFloat(captureButtonSize) * 3 / 2
         self.captureButton.frame = CGRect(x: x, y: y, width: CGFloat(captureButtonSize), height: CGFloat(captureButtonSize))
 
         // flowLayout.scrollDirection = .horizontal
@@ -506,8 +505,10 @@ extension CollectionViewController {
         cell.img.frame.origin = CGPoint(x: 0, y: 0)
         cell.label.frame = CGRect(x: 0, y: cell.frame.size.height -  cell.label.frame.size.height, width: cell.frame.size.width, height: cell.label.frame.size.height)
         cell.label.isHidden = false
-        cell.label.text = (filteredItems?[ix].duration?.toDurationString(withSubSeconds: true) ?? "") + " " + (filteredItems?[ix].description ?? "")
-        cell.swingItem = filteredItems?[ix]
+        if ix < (filteredItems?.count ?? 0) {
+            cell.label.text = (filteredItems?[ix].duration?.toDurationString(withSubSeconds: true) ?? "") + " " + (filteredItems?[ix].description ?? "")
+            cell.swingItem = filteredItems?[ix]
+        }
         DispatchQueue.main.async {
             if let swingItem = cell.swingItem, let url = swingItem.url {
                 cell.img.image = CollectionViewController.getThumbnail(url: url)

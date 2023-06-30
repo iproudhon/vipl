@@ -499,14 +499,14 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
 
     func setupPlaySpeedMenu() {
         let doit = {(action: UIAction) in
-            guard let rate = Float(action.title) else { return }
+            guard let rate = Float(String(action.title.dropLast())) else { return }
             self.playSpeed = rate
             self.player.rate = rate
         }
         var options = [UIAction]()
-        for i in ["0.05", "0.1", "0.2", "0.5", "0.75", "1", "1.25", "1.5", "2"] {
+        for i in ["0.05X", "0.1X", "0.2X", "0.5X", "0.75X", "1X", "1.25X", "1.5X", "2X"] {
             let item = UIAction(title: i, state: .off, handler: doit)
-            if i == "1" {
+            if i == "1X" {
                 item.state = .on
             }
             options.insert(item, at: 0)
