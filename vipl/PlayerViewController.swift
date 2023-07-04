@@ -7,6 +7,7 @@
 
 import Foundation
 import MobileCoreServices
+import CoreMotion
 import AVFoundation
 import AVKit
 import UIKit
@@ -34,6 +35,8 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     
     let player = AVPlayer()
     let playerItemVideoOutput = AVPlayerItemVideoOutput(pixelBufferAttributes: [String(kCVPixelBufferPixelFormatTypeKey): kCVPixelFormatType_32BGRA])
+    let playerItemMetadataOutput = AVPlayerItemMetadataOutput(identifiers: nil)
+
     lazy var displayLink: CADisplayLink = CADisplayLink(target: self, selector: #selector(displayLinkFired(link:)))
     var assetId: String?
 
@@ -60,6 +63,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     @IBOutlet weak var poseButton: UIButton!
     @IBOutlet weak var soundButton: UIButton!
     @IBOutlet weak var tagsLabel: UILabel!
+    @IBOutlet weak var gravityView: GravityView!
 
     // .moz
     @objc private var pointCloudPlayer: PointCloudPlayer?
@@ -87,6 +91,14 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
 
     private var showSegments = false
     private var soundOn = true
+
+    enum GravityMode {
+        case none
+        case grid
+        case axis
+    }
+
+    private var gravityMode: GravityMode = .grid
     
     @IBAction func dismiss(_ sender: Any) {
         self.dismiss(animated: true)
@@ -199,7 +211,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                             self.setAssetId()
                             self.showInfo()
                             DispatchQueue.global(qos: .background).async {
-                                try? self.poseCollection.load(poser: self.poser1, asset: AVAsset(url: orgUrl))
+                                // try? self.poseCollection.load(poser: self.poser1, asset: AVAsset(url: orgUrl))
                             }
                             print("Video saved to \(String(describing: orgUrl.path))")
                         }
@@ -267,7 +279,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             self.player.replaceCurrentItem(with: AVPlayerItem(url: url))
             self.setAssetId()
             DispatchQueue.global(qos: .background).async {
-                try? self.poseCollection.load(poser: self.poser1, asset: AVAsset(url: url))
+                // try? self.poseCollection.load(poser: self.poser1, asset: AVAsset(url: url))
             }
             self.setupPlayerObservers()
 
@@ -320,6 +332,8 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        self.playerItemMetadataOutput.setDelegate(self, queue: DispatchQueue.main)
 
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: .mixWithOthers)
@@ -404,7 +418,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
 
     private func setPlayerFrameSize() {
         let containerSize = scrollView.frame.size
-        var size = player.currentItem?.presentationSize
+        let size = player.currentItem?.presentationSize
         if (size?.width ?? 0) == 0 {
             playerView.frame.size = containerSize
             return
@@ -431,6 +445,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         // playerView
         //   dismiss button
         //   overlay view
+        // gravityView
         // rangeSlider
         // pose, repeat, range, speed, left, play, right, time, save
         let rect = CGRect(x: view.safeAreaInsets.left,
@@ -442,6 +457,10 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
 
         self.scrollView.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height - CGFloat(Int(buttonHeight * 3 / 2)) - CGFloat(sliderHeight))
         self.setPlayerFrameSize()
+
+        self.gravityView.frame = CGRect(x: 0, y: 0, width: self.playerView.frame.width, height: self.playerView.frame.height)
+        self.gravityView.layer.zPosition = 10000
+        self.gravityView.isHidden = true
 
         self.dismissButton.frame.origin = CGPoint(x: rect.minX, y: rect.minY)
         self.menuButton.frame.origin = CGPoint(x: rect.width - self.menuButton.frame.size.width, y: rect.minY)
@@ -538,6 +557,26 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             self.showSegments = !self.showSegments
             self.setupMainMenu()
         }))
+        switch self.gravityMode {
+        case .none:
+            str = "Gravity: None"
+        case .grid:
+            str = "Gravity: Moving Grid"
+        case .axis:
+            str = "Gravity: Moving Axis"
+        }
+        options.append(UIAction(title: str, state: .off, handler: {_ in
+            switch self.gravityMode {
+            case .none:
+                self.gravityMode = .grid
+            case .grid:
+                self.gravityMode = .axis
+            case .axis:
+                self.gravityMode = .none
+            }
+            self.setupMainMenu()
+        }))
+
         options.append(UIAction(title: "Save", state: .off, handler: {_ in
             self.save(asNew: false)
         }))
@@ -687,6 +726,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                 if let item = player.currentItem {
                     if item.status == .readyToPlay {
                         item.add(self.playerItemVideoOutput)
+                        item.add(self.playerItemMetadataOutput)
                         self.displayLink.add(to: .main, forMode: .common)
                         self.setPlayerFrameSize()
                     }
@@ -956,7 +996,7 @@ extension PlayerViewController {
 extension PlayerViewController {
     func doPose(pixels: CVPixelBuffer, time: CMTime, freeze: Bool = false) {
         if let golfer = poseCollection.seek(to: time.seconds), time.equalInMsec(seconds: golfer.time) {
-            log("using loaded one")
+            // log("using loaded one")
             let valid = poser1.isValidPose(golfer)
             if !freeze {
                 overlayView.setPose(valid ? golfer : nil, time)
@@ -1072,6 +1112,47 @@ extension PlayerViewController {
 extension PlayerViewController {
     func viewForZooming(in scrollView: UIScrollView) -> UIView? {
         return self.playerView
+    }
+}
+
+extension PlayerViewController: AVPlayerItemMetadataOutputPushDelegate {
+    func metadataOutput(_ output: AVPlayerItemMetadataOutput, didOutputTimedMetadataGroups groups: [AVTimedMetadataGroup], from track: AVPlayerItemTrack?) {
+        for group in groups {
+            for item in group.items {
+                guard let key = item.key as? String,
+                      key == "title",
+                      let value = item.value as? String else {
+                    continue
+                }
+                let components = value.split(separator: " ").compactMap { Double($0) }
+                self.setPlayerViewGravity(gravity: CMAcceleration(x: components[0], y: components[1], z: components[2]))
+            }
+        }
+    }
+}
+
+extension PlayerViewController {
+    func setPlayerViewGravity(gravity: CMAcceleration) {
+        DispatchQueue.main.async {
+            switch self.gravityMode {
+            case .none:
+                self.gravityView.isHidden = true
+            case .grid:
+                self.gravityView.isHidden = false
+                self.gravityView.update(gravity: gravity)
+            case .axis:
+                self.gravityView.isHidden = false
+                self.gravityView.update(gravity: CMAcceleration(x: 0, y: -1.0, z: 0))
+
+                let pitch = atan2(-gravity.y, gravity.x) - .pi / 2.0
+                let roll = atan2(gravity.y, gravity.z) + .pi / 2.0
+
+                var transform = CATransform3DIdentity
+                transform = CATransform3DRotate(transform, -pitch, 0, 0, 1) // Rotate around Z axis for pitch
+                transform = CATransform3DRotate(transform, -roll, 1, 0, 0)  // Rotate around X axis for roll
+                self.playerView.layer.transform = transform
+            }
+        }
     }
 }
 

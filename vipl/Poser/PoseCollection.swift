@@ -28,7 +28,7 @@ class PoseCollection {
 
     init(poser: Poser, asset: AVAsset, minimumScore: Float32) {
         self.minimumScore = minimumScore
-        try? load(poser: poser, asset: asset)
+        // try? load(poser: poser, asset: asset)
     }
 
     func load(poser: Poser, asset: AVAsset) throws {

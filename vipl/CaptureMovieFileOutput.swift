@@ -8,6 +8,7 @@
 import os
 import AVFoundation
 import CoreLocation
+import CoreMotion
 import UIKit
 
 class CaptureMovieFileOuptut {
@@ -57,6 +58,21 @@ class CaptureMovieFileOuptut {
             writer.add(depthWriterInput)
         }
          */
+
+        let metadataItem = AVMutableMetadataItem()
+        metadataItem.keySpace = .common
+        metadataItem.key = AVMetadataKey.commonKeyTitle as NSString
+        metadataItem.value = "1 2 3" as NSString
+
+        let metadataTime = CMTime(seconds: 0, preferredTimescale: 600)
+        let metadataGroup = AVTimedMetadataGroup(items: [metadataItem], timeRange: CMTimeRange(start: metadataTime, end: metadataTime))
+        let sourceFormat = metadataGroup.copyFormatDescription()
+
+        let metadataWriterInput = AVAssetWriterInput(mediaType: .metadata, outputSettings: nil, sourceFormatHint: sourceFormat)
+        let metadataAdaptor = AVAssetWriterInputMetadataAdaptor(assetWriterInput: metadataWriterInput)
+        if writer.canAdd(metadataWriterInput) {
+            writer.add(metadataWriterInput)
+        }
 
         var metadata = [AVMutableMetadataItem]()
         var item = AVMutableMetadataItem()
@@ -116,6 +132,8 @@ class CaptureMovieFileOuptut {
         self.videoWriterInput = videoWriterInput
         self.audioWriterInput = audioWriterInput
         // self.depthWriterInput = depthWriterInput
+        self.metadataWriterInput = metadataWriterInput
+        self.metadataAdaptor = metadataAdaptor
         self.startTime = CMTime.zero
         self.latestTime = CMTime.zero
 
@@ -150,15 +168,15 @@ class CaptureMovieFileOuptut {
         self.isRecording = false
         self.videoWriterInput?.markAsFinished()
         self.audioWriterInput?.markAsFinished()
-        // self.depthWriterInput?.markAsFinished()
-        // self.metadataWriterInput?.markAsFinished()
+        self.depthWriterInput?.markAsFinished()
+        self.metadataWriterInput?.markAsFinished()
         writer.finishWriting { [weak self] in
             self?.nullify()
             handler()
         }
     }
 
-    func append(_ sampleBuffer: CMSampleBuffer, for mediaType: AVMediaType) {
+    func append(_ sampleBuffer: CMSampleBuffer, for mediaType: AVMediaType, gravity: CMAcceleration? = nil) {
         if self.writer?.status != .writing {
             return
         }
@@ -171,6 +189,17 @@ class CaptureMovieFileOuptut {
         case .video:
             if self.videoWriterInput?.isReadyForMoreMediaData ?? false {
                 self.videoWriterInput?.append(sampleBuffer)
+            }
+            if let gravity = gravity,
+               self.metadataWriterInput?.isReadyForMoreMediaData ?? false {
+                let item = AVMutableMetadataItem()
+                item.keySpace = .common
+                item.key = AVMetadataKey.commonKeyTitle as NSString
+                item.value = String(format: "%f %f %f", gravity.x, gravity.y, gravity.z) as NSString
+
+                let currentTime = sampleBuffer.presentationTimeStamp
+                let metadataGroup = AVTimedMetadataGroup(items: [item], timeRange: CMTimeRange(start: currentTime, end: currentTime))
+                self.metadataAdaptor?.append(metadataGroup)
             }
         case .audio:
             if self.audioWriterInput?.isReadyForMoreMediaData ?? false {

@@ -1180,7 +1180,7 @@ extension CaptureViewController {
     func dataOutputSynchronizer(_ synchronizer: AVCaptureDataOutputSynchronizer, didOutput synchronizedDataCollection: AVCaptureSynchronizedDataCollection) {
         if let videoData = synchronizedDataCollection.synchronizedData(for: self.videoOutput) as? AVCaptureSynchronizedSampleBufferData {
             if !videoData.sampleBufferWasDropped {
-                self.movieOut?.append(videoData.sampleBuffer, for: .video)
+                self.movieOut?.append(videoData.sampleBuffer, for: .video, gravity: self.gravityView.gravityVector)
 
                 if self.showPose {
                     if let lastTime = self.poserTime,

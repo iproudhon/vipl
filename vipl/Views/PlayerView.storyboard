@@ -35,6 +35,10 @@
                                                 <rect key="frame" x="0.0" y="0.0" width="414" height="672"/>
                                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                             </imageView>
+                                            <view opaque="NO" contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="zdV-aO-Nic" customClass="GravityView" customModule="vipl" customModuleProvider="target">
+                                                <rect key="frame" x="4" y="0.0" width="406" height="672"/>
+                                                <autoresizingMask key="autoresizingMask"/>
+                                            </view>
                                         </subviews>
                                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                                     </view>
@@ -175,6 +179,7 @@
                         <outlet property="dismissButton" destination="fNi-Xt-kHl" id="tpX-Pt-bgT"/>
                         <outlet property="frameBackButton" destination="Tns-kl-QzZ" id="21P-wj-cu7"/>
                         <outlet property="frameForwardButton" destination="nq9-UY-GWv" id="VYd-nB-xgv"/>
+                        <outlet property="gravityView" destination="zdV-aO-Nic" id="1jD-NP-Dwz"/>
                         <outlet property="menuButton" destination="QlN-YA-GrD" id="k0t-ed-UuB"/>
                         <outlet property="overlayView" destination="tXC-No-uHB" id="Vgm-lf-Ifi"/>
                         <outlet property="playPauseButton" destination="8Ay-4e-sbK" id="WHd-8G-pEj"/>
