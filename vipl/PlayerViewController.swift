@@ -47,8 +47,10 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     private var reverseTransform: CGAffineTransform?
 
     @IBOutlet var scrollView: UIScrollView!
+    @IBOutlet var containerView: UIView!
     @IBOutlet var playerView: PlayerView!
     @IBOutlet var sceneView: SCNView!
+    @IBOutlet weak var gravityView: GravityView!
     @IBOutlet weak var timeLabel: UILabel!
     @IBOutlet weak var textLogView: UITextView!
     @IBOutlet weak var frameBackButton: UIButton!
@@ -63,7 +65,6 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     @IBOutlet weak var poseButton: UIButton!
     @IBOutlet weak var soundButton: UIButton!
     @IBOutlet weak var tagsLabel: UILabel!
-    @IBOutlet weak var gravityView: GravityView!
 
     // .moz
     @objc private var pointCloudPlayer: PointCloudPlayer?
@@ -99,6 +100,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     }
 
     private var gravityMode: GravityMode = .grid
+    private var gravity: CMAcceleration?
     
     @IBAction func dismiss(_ sender: Any) {
         self.dismiss(animated: true)
@@ -420,6 +422,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         let containerSize = scrollView.frame.size
         let size = player.currentItem?.presentationSize
         if (size?.width ?? 0) == 0 {
+            containerView.frame.size = containerSize
             playerView.frame.size = containerSize
             return
         }
@@ -436,8 +439,10 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             width = height * r2
         }
         var pt = CGPoint(x: width, y: height)
-        pt = pt.applying(playerView.transform)
-        playerView.frame.size = CGSize(width: pt.x, height: pt.y)
+        pt = pt.applying(containerView.transform)
+        containerView.frame.size = CGSize(width: pt.x, height: pt.y)
+        playerView.frame = CGRect(x: 0, y: 0, width: containerView.frame.width, height: containerView.frame.height)
+        gravityView.frame = CGRect(x: 0, y: 0, width: containerView.frame.width, height: containerView.frame.height)
         scrollView.contentSize = playerView.frame.size
     }
 
@@ -456,9 +461,10 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         var x, y: CGFloat
 
         self.scrollView.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height - CGFloat(Int(buttonHeight * 3 / 2)) - CGFloat(sliderHeight))
+        self.containerView.frame = CGRect(x: 0, y: 0, width: self.scrollView.frame.width, height: self.scrollView.frame.height)
         self.setPlayerFrameSize()
 
-        self.gravityView.frame = CGRect(x: 0, y: 0, width: self.playerView.frame.width, height: self.playerView.frame.height)
+        self.gravityView.frame = CGRect(x: 0, y: 0, width: self.containerView.frame.width, height: self.containerView.frame.height)
         self.gravityView.layer.zPosition = 10000
         self.gravityView.isHidden = true
 
@@ -574,6 +580,7 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             case .axis:
                 self.gravityMode = .none
             }
+            self.resetPlayerViewGravity()
             self.setupMainMenu()
         }))
 
@@ -1111,7 +1118,7 @@ extension PlayerViewController {
 
 extension PlayerViewController {
     func viewForZooming(in scrollView: UIScrollView) -> UIView? {
-        return self.playerView
+        return self.containerView
     }
 }
 
@@ -1132,11 +1139,32 @@ extension PlayerViewController: AVPlayerItemMetadataOutputPushDelegate {
 }
 
 extension PlayerViewController {
-    func setPlayerViewGravity(gravity: CMAcceleration) {
+    func resetPlayerViewGravity() {
         DispatchQueue.main.async {
             switch self.gravityMode {
             case .none:
                 self.gravityView.isHidden = true
+                self.playerView.layer.transform = CATransform3DIdentity
+            case .grid:
+                self.gravityView.isHidden = false
+                self.playerView.layer.transform = CATransform3DIdentity
+            case .axis:
+                self.gravityView.isHidden = false
+                self.playerView.layer.transform = CATransform3DIdentity
+            }
+            if let gravity = self.gravity {
+                self.setPlayerViewGravity(gravity: gravity)
+            }
+        }
+    }
+
+    func setPlayerViewGravity(gravity: CMAcceleration) {
+        self.gravity = gravity
+        DispatchQueue.main.async {
+            switch self.gravityMode {
+            case .none:
+                self.gravityView.isHidden = true
+                self.gravityView.update(gravity: gravity)
             case .grid:
                 self.gravityView.isHidden = false
                 self.gravityView.update(gravity: gravity)

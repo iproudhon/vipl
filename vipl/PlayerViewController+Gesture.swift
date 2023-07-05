@@ -31,7 +31,7 @@ extension PlayerViewController {
 
     @objc public func tap(_ sender: UITapGestureRecognizer) {
         guard let view = sender.view,
-              let superview = view.superview as? UIScrollView else { return }
+              let superview = view.superview?.superview as? UIScrollView else { return }
         let rect = superview.convert(superview.bounds, to: view)
         let size = CGSize(width: rect.width, height: rect.height)
         var pt = sender.location(in: view)

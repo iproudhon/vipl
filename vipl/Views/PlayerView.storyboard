@@ -23,21 +23,28 @@
                                 <rect key="frame" x="0.0" y="48" width="414" height="672"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <subviews>
-                                    <view contentMode="scaleToFill" fixedFrame="YES" preservesSuperviewLayoutMargins="YES" translatesAutoresizingMaskIntoConstraints="NO" id="vMq-Yd-2Qz" customClass="PlayerView" customModule="vipl" customModuleProvider="target">
+                                    <view contentMode="scaleToFill" fixedFrame="YES" insetsLayoutMarginsFromSafeArea="NO" translatesAutoresizingMaskIntoConstraints="NO" id="hfz-fM-yjG">
                                         <rect key="frame" x="0.0" y="0.0" width="414" height="672"/>
-                                        <autoresizingMask key="autoresizingMask"/>
+                                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxX="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
                                         <subviews>
-                                            <sceneKitView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" preservesSuperviewLayoutMargins="YES" id="Tjq-f0-DmK">
+                                            <view opaque="NO" contentMode="scaleToFill" fixedFrame="YES" insetsLayoutMarginsFromSafeArea="NO" translatesAutoresizingMaskIntoConstraints="NO" id="zdV-aO-Nic" customClass="GravityView" customModule="vipl" customModuleProvider="target">
                                                 <rect key="frame" x="0.0" y="0.0" width="414" height="672"/>
-                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                                            </sceneKitView>
-                                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" preservesSuperviewLayoutMargins="YES" id="tXC-No-uHB" customClass="OverlayView" customModule="vipl" customModuleProvider="target">
+                                                <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxX="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
+                                            </view>
+                                            <view contentMode="scaleToFill" fixedFrame="YES" insetsLayoutMarginsFromSafeArea="NO" translatesAutoresizingMaskIntoConstraints="NO" id="vMq-Yd-2Qz" customClass="PlayerView" customModule="vipl" customModuleProvider="target">
                                                 <rect key="frame" x="0.0" y="0.0" width="414" height="672"/>
-                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                                            </imageView>
-                                            <view opaque="NO" contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="zdV-aO-Nic" customClass="GravityView" customModule="vipl" customModuleProvider="target">
-                                                <rect key="frame" x="4" y="0.0" width="406" height="672"/>
-                                                <autoresizingMask key="autoresizingMask"/>
+                                                <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxX="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
+                                                <subviews>
+                                                    <sceneKitView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" preservesSuperviewLayoutMargins="YES" id="Tjq-f0-DmK">
+                                                        <rect key="frame" x="-1" y="-1" width="414" height="672"/>
+                                                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                                    </sceneKitView>
+                                                    <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" preservesSuperviewLayoutMargins="YES" id="tXC-No-uHB" customClass="OverlayView" customModule="vipl" customModuleProvider="target">
+                                                        <rect key="frame" x="-1" y="-1" width="414" height="672"/>
+                                                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                                    </imageView>
+                                                </subviews>
+                                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                                             </view>
                                         </subviews>
                                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
@@ -176,6 +183,7 @@
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                     </view>
                     <connections>
+                        <outlet property="containerView" destination="hfz-fM-yjG" id="vd7-24-S0I"/>
                         <outlet property="dismissButton" destination="fNi-Xt-kHl" id="tpX-Pt-bgT"/>
                         <outlet property="frameBackButton" destination="Tns-kl-QzZ" id="21P-wj-cu7"/>
                         <outlet property="frameForwardButton" destination="nq9-UY-GWv" id="VYd-nB-xgv"/>
