@@ -12,6 +12,7 @@ import AVFoundation
 import AVKit
 import UIKit
 import SceneKit
+import JavaScriptCore
 
 /*
 Menu Cameras             X
@@ -181,9 +182,11 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             } else {
                 url = FileSystemHelper.getNextFileName(ext: FileSystemHelper.mov)
             }
+
             let timeRange = CMTimeRangeFromTimeToTime(start: CMTime(seconds: Double(rangeSlider.lowerBound), preferredTimescale: 600), end: CMTime(seconds: Double(rangeSlider.upperBound), preferredTimescale: 600))
             let exporter = AVAssetExportSession(asset: currentItem.asset, presetName: AVAssetExportPresetHEVCHighestQuality)
 
+            // videoComposition might be missing
             exporter?.videoComposition = currentItem.videoComposition
             exporter?.metadata = currentItem.asset.metadata
             exporter?.outputURL = url
@@ -198,6 +201,10 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                             print("Video saved to \(String(describing: url?.path))")
                         } else {
                             guard let orgUrl = (self.player.currentItem?.asset as? AVURLAsset)?.url else { return }
+                            if let item = self.player.currentItem {
+                                item.remove(self.playerItemVideoOutput)
+                                item.remove(self.playerItemMetadataOutput)
+                            }
                             self.player.replaceCurrentItem(with: nil)
                             self.setAssetId()
                             self.poseCollection.clear()
@@ -352,6 +359,17 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         } else {
             self.soundButton.tintColor = .systemGray
             self.soundButton.setImage(UIImage(systemName: "speaker.slash.fill"), for: .normal)
+        }
+
+        switch UserDefaults.standard.string(forKey: "gravity-mode") ?? "grid" {
+        case "grid":
+            self.gravityMode = .grid
+        case "axis":
+            self.gravityMode = .axis
+        case "none":
+            fallthrough
+        default:
+            self.gravityMode = .none
         }
 
         // initialize the range slider
@@ -543,6 +561,17 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         }
         playSpeedMenu.showsMenuAsPrimaryAction = true
     }
+
+    func yesOrNo(title: String, message: String, yes: String, no: String, completion: @escaping (Bool) -> Void) {
+        let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alertController.addAction(UIAlertAction(title: yes, style: .default) { _ in
+            completion(true)
+        })
+        alertController.addAction(UIAlertAction(title: no, style: .default) { _ in
+            completion(false)
+        })
+        self.present(alertController, animated: true, completion: nil)
+    }
     
     func setupMainMenu() {
         var options = [UIAction]()
@@ -565,36 +594,50 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         }))
         switch self.gravityMode {
         case .none:
-            str = "Gravity: None"
+            str = "Gravity: None->Grid"
         case .grid:
-            str = "Gravity: Moving Grid"
+            str = "Gravity: Grid->Axis"
         case .axis:
-            str = "Gravity: Moving Axis"
+            str = "Gravity: Axis->None"
         }
         options.append(UIAction(title: str, state: .off, handler: {_ in
             switch self.gravityMode {
             case .none:
                 self.gravityMode = .grid
+                UserDefaults.standard.setValue("grid", forKey: "gravity-mode")
             case .grid:
                 self.gravityMode = .axis
+                UserDefaults.standard.setValue("axis", forKey: "gravity-mode")
             case .axis:
                 self.gravityMode = .none
+                UserDefaults.standard.setValue("none", forKey: "gravity-mode")
             }
             self.resetPlayerViewGravity()
             self.setupMainMenu()
         }))
 
         options.append(UIAction(title: "Save", state: .off, handler: {_ in
-            self.save(asNew: false)
+            self.yesOrNo(title: "Save", message: "Sure you want to save the range?", yes: "Ok", no: "Cancel") { ok in
+                if ok {
+                    self.save(asNew: false)
+                }
+            }
         }))
         options.append(UIAction(title: "Save as New", state: .off, handler: {_ in
-            self.save(asNew: true)
+            self.yesOrNo(title: "Save as New", message: "Sure you want to save the range as a new?", yes: "Ok", no: "Cancel") { ok in
+                if ok {
+                    self.save(asNew: true)
+                }
+            }
         }))
         options.append(UIAction(title: "Delete", state: .off, handler: {_ in
-            if let url = self.url {
-                try? FileManager.default.removeItem(at: url)
+            self.yesOrNo(title: "Delete", message: "Sure you want to delete this swing?", yes: "Yes", no: "No") { ok in
+                if ok,
+                   let url = self.url {
+                    try? FileManager.default.removeItem(at: url)
+                    self.dismiss(animated: true)
+                }
             }
-            self.dismiss(animated: true)
         }))
         let menu = UIMenu(title: "vipl", children: options)
         
@@ -1262,11 +1305,18 @@ extension PlayerViewController {
                 if let textField = alertController.textFields?.first,
                    let url = (asset as? AVURLAsset)?.url {
                     desc = textField.text
+                    if let item = self.player.currentItem {
+                        item.remove(self.playerItemVideoOutput)
+                        item.remove(self.playerItemMetadataOutput)
+                    }
+                    self.player.replaceCurrentItem(with: nil)
                     AVAsset.setMetadata(fileURL: url, description: desc ?? "", location: nil) { success in
-                        DispatchQueue.main.async {
-                            self.player.replaceCurrentItem(with: AVPlayerItem(url: url))
-                            self.setAssetId()
-                            self.showInfo()
+                        if success {
+                            DispatchQueue.main.async {
+                                self.player.replaceCurrentItem(with: AVPlayerItem(url: url))
+                                self.setAssetId()
+                                self.showInfo()
+                            }
                         }
                     }
                 }

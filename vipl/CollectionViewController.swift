@@ -311,12 +311,21 @@ extension CollectionViewController {
     }
 
     func loadVideos() {
+        let sem = DispatchSemaphore(value: 0)
+        objc_sync_enter(self)
         self.swingItems = []
         self.filteredItems = []
+        objc_sync_exit(self)
 
         DispatchQueue.main.async {
             self.collectionView.reloadData()
+            // TODO: need to check numberOfItems, otherwise collectionview doesn't clear it?
+            if self.collectionView.numberOfItems(inSection: 0) > 0 {
+                // self.collectionView.reloadData()
+            }
+            sem.signal()
         }
+        sem.wait()
 
         do {
             let fileManager = FileManager.default
@@ -348,7 +357,9 @@ extension CollectionViewController {
                         continue
                     }
                     DispatchQueue.main.async {
+                        objc_sync_enter(self)
                         self.insertItem(item: swingItem)
+                        objc_sync_exit(self)
                     }
                 }
             }
