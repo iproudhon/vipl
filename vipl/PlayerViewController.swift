@@ -95,9 +95,10 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
     private var soundOn = true
 
     enum GravityMode {
-        case none
-        case grid
-        case axis
+        case none       // no action
+        case grid       // show tilted axis & grid
+        case axis       // show tilted image with fixed axis & grid
+        case tilt       // show tilted image, no axis or grid
     }
 
     private var gravityMode: GravityMode = .grid
@@ -366,6 +367,8 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
             self.gravityMode = .grid
         case "axis":
             self.gravityMode = .axis
+        case "tilt":
+            self.gravityMode = .tilt
         case "none":
             fallthrough
         default:
@@ -598,7 +601,9 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
         case .grid:
             str = "Gravity: Grid->Axis"
         case .axis:
-            str = "Gravity: Axis->None"
+            str = "Gravity: Axis->Tilt"
+        case .tilt:
+            str = "Gravity: Tilt->None"
         }
         options.append(UIAction(title: str, state: .off, handler: {_ in
             switch self.gravityMode {
@@ -609,6 +614,9 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                 self.gravityMode = .axis
                 UserDefaults.standard.setValue("axis", forKey: "gravity-mode")
             case .axis:
+                self.gravityMode = .tilt
+                UserDefaults.standard.setValue("tilt", forKey: "gravity-mode")
+            case .tilt:
                 self.gravityMode = .none
                 UserDefaults.standard.setValue("none", forKey: "gravity-mode")
             }
@@ -1185,13 +1193,10 @@ extension PlayerViewController {
     func resetPlayerViewGravity() {
         DispatchQueue.main.async {
             switch self.gravityMode {
-            case .none:
+            case .none, .tilt:
                 self.gravityView.isHidden = true
                 self.playerView.layer.transform = CATransform3DIdentity
-            case .grid:
-                self.gravityView.isHidden = false
-                self.playerView.layer.transform = CATransform3DIdentity
-            case .axis:
+            case .grid, .axis:
                 self.gravityView.isHidden = false
                 self.playerView.layer.transform = CATransform3DIdentity
             }
@@ -1211,8 +1216,8 @@ extension PlayerViewController {
             case .grid:
                 self.gravityView.isHidden = false
                 self.gravityView.update(gravity: gravity)
-            case .axis:
-                self.gravityView.isHidden = false
+            case .axis, .tilt:
+                self.gravityView.isHidden = self.gravityMode == .tilt
                 self.gravityView.update(gravity: CMAcceleration(x: 0, y: -1.0, z: 0))
 
                 let pitch = atan2(-gravity.y, gravity.x) - .pi / 2.0

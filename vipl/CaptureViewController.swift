@@ -87,16 +87,38 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
     // focus point
     private var focusPoint = CGPoint(x: 0, y: 0)
 
-
     // point cloud stuff
     private var depthDataFilter: Bool = true
     private var pointClouds: PointCloudCollection?
     private var sceneViewMode: Int = 0
     private var cmdCapturePointCloud: Int = 0
 
+    // gravity view stuff
+    enum GravityMode {
+        case none       // no action
+        case grid       // show tilted axis & grid
+        case axis       // show tilted image with fixed axis & grid
+        case tilt       // show tilted image, no axis or grid
+    }
+    private var gravityMode: GravityMode = .grid
+    private var gravity: CMAcceleration?
+
 
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        switch UserDefaults.standard.string(forKey: "capture-gravity-mode") ?? "grid" {
+        case "grid":
+            self.gravityMode = .grid
+        case "axis":
+            self.gravityMode = .axis
+        case "tilt":
+            self.gravityMode = .tilt
+        case "none":
+            fallthrough
+        default:
+            self.gravityMode = .none
+        }
 
         view.addSubview(rangeSlider)
         rangeSlider.addTarget(self, action: #selector(rangeSliderValueChanged(_:)), for: .valueChanged)
@@ -781,6 +803,34 @@ extension CaptureViewController {
             self.setupMainMenu()
         }))
         var str: String
+        switch self.gravityMode {
+        case .none:
+            str = "Gravity: None->Grid"
+        case .grid:
+            str = "Gravity: Grid->Axis"
+        case .axis:
+            str = "Gravity: Axis->Tilt"
+        case .tilt:
+            str = "Gravity: Tilt->None"
+        }
+        options.append(UIAction(title: str, state: .off, handler: {_ in
+            switch self.gravityMode {
+            case .none:
+                self.gravityMode = .grid
+                UserDefaults.standard.setValue("grid", forKey: "capture-gravity-mode")
+            case .grid:
+                self.gravityMode = .axis
+                UserDefaults.standard.setValue("axis", forKey: "capture-gravity-mode")
+            case .axis:
+                self.gravityMode = .tilt
+                UserDefaults.standard.setValue("tilt", forKey: "capture-gravity-mode")
+            case .tilt:
+                self.gravityMode = .none
+                UserDefaults.standard.setValue("none", forKey: "capture-gravity-mode")
+            }
+            self.resetPreviewGravity()
+            self.setupMainMenu()
+        }))
         if self.cmdCapturePointCloud == 0 {
             str = "Start Point Cloud Capture"
         } else {
@@ -790,7 +840,6 @@ extension CaptureViewController {
             self.togglePointCloudCapture()
             self.setupMainMenu()
         }))
-#if false
         switch self.sceneViewMode {
         case 0:
             str = "Show Scene View"
@@ -803,6 +852,7 @@ extension CaptureViewController {
             self.toggleSceneViewMode()
             self.setupMainMenu()
         }))
+#if false
         if self.cmdCapturePointCloud == 0 {
             str = "Start Point Cloud Capture"
         } else {
@@ -834,7 +884,7 @@ extension CaptureViewController {
                 _ = self.selectCamera()
             }
         }))
-#if false
+#if true
         options.append(UIAction(title: "Reset Scene View", state: .off, handler: { _ in
             self.resetPointCloud()
         }))
@@ -1757,32 +1807,51 @@ extension CaptureViewController {
                 if let validData = data {
                     // Update the vector view
                     DispatchQueue.main.async {
-                        self.gravityView.update(gravity: validData.gravity)
-
-                        // self.setPreviewGravity(gravity: validData.gravity)
-                        // self.gravityView.update(gravity: CMAcceleration(x: 0, y: -1.0, z: 0))
+                        self.setPreviewGravity(gravity: validData.gravity)
                     }
                 }
             }
         }
     }
 
+    func resetPreviewGravity() {
+        DispatchQueue.main.async {
+            switch self.gravityMode {
+            case .none, .tilt:
+                self.gravityView.isHidden = true
+                self.previewView.layer.transform = CATransform3DIdentity
+            case .grid, .axis:
+                self.gravityView.isHidden = false
+                self.previewView.layer.transform = CATransform3DIdentity
+            }
+            if let gravity = self.gravity {
+                self.setPreviewGravity(gravity: gravity)
+            }
+        }
+    }
+
     func setPreviewGravity(gravity: CMAcceleration) {
-        let pitch = atan2(-gravity.y, gravity.x) - .pi / 2.0
-        let roll = atan2(gravity.y, gravity.z) + .pi / 2.0
+        self.gravity = gravity
+        DispatchQueue.main.async {
+            switch self.gravityMode {
+            case .none:
+                self.gravityView.isHidden = true
+                self.gravityView.update(gravity: gravity, reverse: false)
+            case .grid:
+                self.gravityView.isHidden = false
+                self.gravityView.update(gravity: gravity, reverse: false)
+            case .axis, .tilt:
+                self.gravityView.isHidden = self.gravityMode == .tilt
+                self.gravityView.update(gravity: gravity, reverse: true)
 
-        /*
-        // Construct the transformation matrix
-        var transform = CGAffineTransform.identity
-        transform = transform.rotated(by: -pitch) // Rotate around Z axis
-        transform = transform.concatenating(CGAffineTransform(a: 1, b: tan(roll), c: 0, d: 1, tx: 0, ty: 0)) // Shear to simulate rotation around X axis
-        // Apply the transform to the preview layer
-        self.previewView.layer.setAffineTransform(transform)
-         */
+                let pitch = atan2(-gravity.y, gravity.x) - .pi / 2.0
+                let roll = atan2(gravity.y, gravity.z) + .pi / 2.0
 
-        var transform = CATransform3DIdentity
-        transform = CATransform3DRotate(transform, -pitch, 0, 0, 1) // Rotate around Z axis for pitch
-        transform = CATransform3DRotate(transform, -roll, 1, 0, 0)  // Rotate around X axis for roll
-        self.previewView.layer.transform = transform
+                var transform = CATransform3DIdentity
+                transform = CATransform3DRotate(transform, -pitch, 0, 0, 1) // Rotate around Z axis for pitch
+                transform = CATransform3DRotate(transform, -roll, 1, 0, 0)  // Rotate around X axis for roll
+                self.previewView.layer.transform = transform
+            }
+        }
     }
 }

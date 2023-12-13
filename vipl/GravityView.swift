@@ -11,6 +11,7 @@ import simd
 
 class GravityView: UIView {
     var gravityVector: CMAcceleration?
+    var reverse = false
     let gravityColor: CGColor = UIColor.red.cgColor
     let axisColor: CGColor = UIColor.green.cgColor
     let lineLength: CGFloat = 100
@@ -114,12 +115,19 @@ class GravityView: UIView {
                 fatalError()
             }
 
-            pitch = atan2(-gy, gx) - .pi / 2.0
-            roll = atan2(gy, gz) + .pi / 2.0
+            if self.reverse {
+                pitch = 0
+                roll = 0
+                deltaX = 0
+                deltaY = 0
+            } else {
+                pitch = atan2(-gy, gx) - .pi / 2.0
+                roll = atan2(gy, gz) + .pi / 2.0
 
-            let delta = bounds.midY * CGFloat(sin(roll))
-            deltaX = delta * CGFloat(sin(-pitch))
-            deltaY = delta * CGFloat(cos(-pitch))
+                let delta = bounds.midY * CGFloat(sin(roll))
+                deltaX = delta * CGFloat(sin(-pitch))
+                deltaY = delta * CGFloat(cos(-pitch))
+            }
 
             // let pitchD = pitch * 180 / .pi, rollD = roll * 180 / .pi
             // print("XXX: pitch=\(String(format: "%.2f", pitchD)) roll=\(String(format: "%.2f", rollD))")
@@ -132,7 +140,7 @@ class GravityView: UIView {
         let center = CGPoint(x: bounds.midX, y: bounds.midY)
         var pt = CGPoint(x: center.x + lineLength, y: center.y)
         context.beginPath()
-        context.setStrokeColor(axisColor)
+        context.setStrokeColor(!self.reverse ? axisColor : gravityColor)
         context.move(to: pt)
         context.addLine(to: center)
         pt = CGPoint(x: center.x, y: center.y + lineLength)
@@ -142,7 +150,7 @@ class GravityView: UIView {
         context.beginPath()
         context.setStrokeColor(UIColor.white.cgColor)
         context.setLineWidth(2)
-        context.setAlpha(0.5)
+        context.setAlpha(0.3)
         // vanishing perpendicular lines
         for i in -2..<13 {
             let (x1, y1) = rotate(x: CGFloat(i) * bounds.maxX / 10, y: bounds.maxY, z: 0, pitch: pitch, roll: roll)
@@ -166,7 +174,7 @@ class GravityView: UIView {
             context.setAlpha(0.5)
 
             pt = CGPoint(x: center.x + CGFloat(gx * lineLength), y: center.y + CGFloat(gy * -lineLength))
-            context.setStrokeColor(gravityColor)
+            context.setStrokeColor(!self.reverse ? gravityColor : axisColor)
             context.move(to: pt)
             context.addLine(to: center)
             pt = CGPoint(x: center.x + CGFloat(gy * -lineLength), y: center.y + CGFloat(gz * lineLength))
@@ -182,8 +190,9 @@ class GravityView: UIView {
  */
     }
 
-    func update(gravity: CMAcceleration) {
+    func update(gravity: CMAcceleration, reverse: Bool = false) {
         self.gravityVector = gravity
+        self.reverse = reverse
         self.setNeedsDisplay()
     }
 }
