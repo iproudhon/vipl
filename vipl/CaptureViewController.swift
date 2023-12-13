@@ -831,15 +831,6 @@ extension CaptureViewController {
             self.resetPreviewGravity()
             self.setupMainMenu()
         }))
-        if self.cmdCapturePointCloud == 0 {
-            str = "Start Point Cloud Capture"
-        } else {
-            str = "Stop Point Cloud Capture"
-        }
-        options.append(UIAction(title: str, state: .off, handler: { _ in
-            self.togglePointCloudCapture()
-            self.setupMainMenu()
-        }))
         switch self.sceneViewMode {
         case 0:
             str = "Show Scene View"
@@ -872,6 +863,15 @@ extension CaptureViewController {
             self.stepPointCloud(forward: false)
         }))
 #endif
+        if self.cmdCapturePointCloud == 0 {
+            str = "Start Point Cloud Capture"
+        } else {
+            str = "Stop Point Cloud Capture"
+        }
+        options.append(UIAction(title: str, state: .off, handler: { _ in
+            self.togglePointCloudCapture()
+            self.setupMainMenu()
+        }))
         if self.depthDataFilter {
             str = "Disable Depth Data Filter"
         } else {
@@ -1323,8 +1323,13 @@ extension CaptureViewController {
 
         if let syncedDepthData = synchronizedDataCollection.synchronizedData(for: self.depthDataOutput) as? AVCaptureSynchronizedDepthData,
            let videoData = synchronizedDataCollection.synchronizedData(for: self.videoOutput) as? AVCaptureSynchronizedSampleBufferData {
-            if !syncedDepthData.depthDataWasDropped && !videoData.sampleBufferWasDropped && self.pointCloudOut != nil {
-                self.appendPointCloud(depthData: syncedDepthData.depthData, pixelData: CMSampleBufferGetImageBuffer(videoData.sampleBuffer)!, time: CMSampleBufferGetPresentationTimeStamp(videoData.sampleBuffer))
+            if !syncedDepthData.depthDataWasDropped && !videoData.sampleBufferWasDropped {
+                if self.pointCloudOut != nil {
+                    self.appendPointCloud(depthData: syncedDepthData.depthData, pixelData: CMSampleBufferGetImageBuffer(videoData.sampleBuffer)!, time: CMSampleBufferGetPresentationTimeStamp(videoData.sampleBuffer))
+                }
+                if !self.sceneView.isHidden {
+                    self.showPointCloud(depthData: syncedDepthData.depthData, pixelData: CMSampleBufferGetImageBuffer(videoData.sampleBuffer)!, time: CMSampleBufferGetPresentationTimeStamp(videoData.sampleBuffer))
+                }
             }
         }
 
@@ -1428,7 +1433,7 @@ extension CaptureViewController {
             self.rangeSlider.isHidden = true
         case 1:     // 1/3 size, record mode
             self.sceneView.isHidden = false
-            self.rangeSlider.isHidden = false
+            self.rangeSlider.isHidden = true
             if view.bounds.width < view.bounds.height {
                 self.sceneView.frame.size.width = view.bounds.width * 2 / 5
                 self.sceneView.frame.size.height = view.bounds.height * self.sceneView.frame.size.width / view.bounds.width
@@ -1440,7 +1445,7 @@ extension CaptureViewController {
             self.sceneView.frame.origin.x = view.frame.width - view.safeAreaInsets.right - self.sceneView.frame.width
         default:    // full size, play mode
             self.sceneView.isHidden = false
-            self.rangeSlider.isHidden = false
+            self.rangeSlider.isHidden = true
             self.sceneView.frame.origin = CGPoint(x: 0, y: 0)
             self.sceneView.frame.size = self.previewView.frame.size
         }
@@ -1556,6 +1561,19 @@ extension CaptureViewController {
         let jsonInfo = info.toJson()
 
         pointCloudOut.record(time.seconds, info: jsonInfo, count: Int32(width * height), depths: &(depths), colors: &(colors))
+    }
+
+    func showPointCloud(depthData: AVDepthData, pixelData: CVPixelBuffer, time: CMTime) {
+        guard let ptcld = PointCloud2.capture(depthData: depthData, colors: self.isMirrored ? pixelData.mirrored()! : pixelData),
+              let node = ptcld.toSCNNode() else { return }
+        DispatchQueue.main.async {
+            if let node = self.sceneView.scene?.rootNode.childNodes.first(where: { node in return
+                node.name == "it"}) {
+                node.removeFromParentNode()
+            }
+            node.name = "it"
+            self.sceneView.scene?.rootNode.addChildNode(node)
+        }
     }
 
     @objc func rangeSliderValueChanged(_ rangeSlider: RangeSlider) {
