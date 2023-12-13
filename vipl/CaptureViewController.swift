@@ -88,7 +88,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
     private var focusPoint = CGPoint(x: 0, y: 0)
 
     // point cloud stuff
-    private var depthDataFilter: Bool = true
+    private var depthDataFilter: Bool = false
     private var pointClouds: PointCloudCollection?
     private var sceneViewMode: Int = 0
     private var cmdCapturePointCloud: Int = 0
@@ -263,8 +263,15 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         var x, y, height: CGFloat
 
         height = rect.height - CGFloat(buttonSize + 2 * buttonMargin)
-        self.containerView.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: height)
-        self.previewView.frame = CGRect(x: 0, y: 0, width: rect.width, height: height)
+        if view.bounds.width < view.bounds.height {
+            // vertical
+            self.containerView.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: height)
+            self.previewView.frame = CGRect(x: 0, y: 0, width: rect.width, height: height)
+        } else {
+            // horizontal
+            self.containerView.frame = CGRect(x: rect.minX, y: 0, width: rect.width, height: view.bounds.height)
+            self.previewView.frame = CGRect(x: 0, y: 0, width: rect.width, height: view.bounds.height)
+        }
         self.previewView.layer.zPosition = -100000
         self.overlayView.frame = CGRect(x: 0, y: 0, width: self.previewView.frame.width, height: self.previewView.frame.height)
         self.gravityView.frame = CGRect(x: 0, y: 0, width: self.previewView.frame.width, height: self.previewView.frame.height)
@@ -279,8 +286,17 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         self.textLogView.frame = CGRect(x: rect.minX, y: self.containerView.frame.origin.y + self.containerView.frame.size.height, width: rect.width, height: height)
 
         x = rect.minX + (rect.width - CGFloat(buttonSize)) / 2
-        y = self.containerView.frame.origin.y + self.containerView.frame.size.height
-        y += ((rect.minY + rect.height - y) - CGFloat(buttonSize)) / 2
+        if view.bounds.width < view.bounds.height {
+            // vertical
+            y = self.containerView.frame.origin.y + self.containerView.frame.size.height
+            y += ((rect.minY + rect.height - y) - CGFloat(buttonSize)) / 2
+        } else {
+            // horizontal
+            y = view.bounds.height - CGFloat(buttonSize) * 3 / 2
+            // y = self.containerView.frame.origin.y + self.containerView.frame.size.height
+            // y += ((self.containerView.frame.size.height - y) - CGFloat(buttonSize)) / 2
+            // y += ((rect.minY + rect.height - y) - CGFloat(buttonSize)) / 2
+        }
         self.recordButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonSize), height: CGFloat(buttonSize))
 
         self.refreshSceneView()
@@ -834,8 +850,8 @@ extension CaptureViewController {
         switch self.sceneViewMode {
         case 0:
             str = "Show Scene View"
-        case 1:
-            str = "Maximize Scene View"
+        // case 1:
+        //    str = "Maximize Scene View"
         default:
             str = "Hide Scene View"
         }
@@ -1327,7 +1343,7 @@ extension CaptureViewController {
                 if self.pointCloudOut != nil {
                     self.appendPointCloud(depthData: syncedDepthData.depthData, pixelData: CMSampleBufferGetImageBuffer(videoData.sampleBuffer)!, time: CMSampleBufferGetPresentationTimeStamp(videoData.sampleBuffer))
                 }
-                if !self.sceneView.isHidden {
+                if self.sceneViewMode != 0 {
                     self.showPointCloud(depthData: syncedDepthData.depthData, pixelData: CMSampleBufferGetImageBuffer(videoData.sampleBuffer)!, time: CMSampleBufferGetPresentationTimeStamp(videoData.sampleBuffer))
                 }
             }
@@ -1420,7 +1436,7 @@ extension CaptureViewController {
     }
 
     func toggleSceneViewMode() {
-        sceneViewMode = (sceneViewMode + 1) % 3
+        sceneViewMode = (sceneViewMode + 1) % 2
         refreshSceneView()
     }
 
@@ -1431,6 +1447,8 @@ extension CaptureViewController {
         case 0:     // hidden
             self.sceneView.isHidden = true
             self.rangeSlider.isHidden = true
+            self.previewView.isHidden = false
+        /*
         case 1:     // 1/3 size, record mode
             self.sceneView.isHidden = false
             self.rangeSlider.isHidden = true
@@ -1443,11 +1461,13 @@ extension CaptureViewController {
             }
             self.sceneView.frame.origin.y = self.xButton.frame.origin.y + self.xButton.frame.height
             self.sceneView.frame.origin.x = view.frame.width - view.safeAreaInsets.right - self.sceneView.frame.width
+         */
         default:    // full size, play mode
             self.sceneView.isHidden = false
             self.rangeSlider.isHidden = true
             self.sceneView.frame.origin = CGPoint(x: 0, y: 0)
             self.sceneView.frame.size = self.previewView.frame.size
+            self.previewView.isHidden = true
         }
 
         let x = self.sceneView.frame.origin.x + CGFloat(sliderMargin)
