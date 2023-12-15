@@ -69,7 +69,8 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
 
     // .moz
     @objc private var pointCloudPlayer: PointCloudPlayer?
-    
+    private var showHeatmap: Bool = false
+
     @objc private let rangeSlider = RangeSlider(frame: .zero)
 
     // for seek
@@ -621,6 +622,11 @@ class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, U
                 UserDefaults.standard.setValue("none", forKey: "gravity-mode")
             }
             self.resetPlayerViewGravity()
+            self.setupMainMenu()
+        }))
+        options.append(UIAction(title: self.showHeatmap ? "Disable Surface Heatmap" : "Show Surface Heatmap", state: .off, handler: { item in
+            self.showHeatmap = !self.showHeatmap
+            self.pointCloudPlayer?.heatMap = self.showHeatmap
             self.setupMainMenu()
         }))
 

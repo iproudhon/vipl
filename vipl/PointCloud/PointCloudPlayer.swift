@@ -189,13 +189,15 @@ class PointCloudPlayer: NSObject {
 
     var creationDate: Date?
 
+    var heatMap: Bool = false
+
     var pointCloud: PointCloud2? {
         guard let asset = self.asset else { return nil }
 
         var cacheId: String?
         if url != nil && creationDate != nil {
             let duration = asset.endTime() - asset.startTime()
-            cacheId = "\(url!.lastPathComponent):\(Int64(creationDate!.timeIntervalSince1970 * 1000) * Int64(duration * 1000)):\(asset.currentTime())"
+            cacheId = "\(url!.lastPathComponent):\(Int64(creationDate!.timeIntervalSince1970 * 1000) * Int64(duration * 1000)):\(asset.currentTime()):\(self.heatMap ? 1 : 0)"
         }
         var ptcld: PointCloud2?
         if cacheId != nil {
@@ -226,7 +228,7 @@ class PointCloudPlayer: NSObject {
            gravity.count == 3 {
             ptcld.gravity = CMAcceleration(x: Double(gravity[0]), y: Double(gravity[1]), z: Double(gravity[2]))
         }
-        _ = ptcld.toSCNNode()
+        _ = ptcld.toSCNNode(heatmap: self.heatMap)
         if cacheId != nil {
             Cache.Default.set(cacheId!, ptcld as Any)
         }
@@ -249,7 +251,7 @@ class PointCloudPlayer: NSObject {
             return node
         }
 
-        var ptcld = PointCloud2()
+        let ptcld = PointCloud2()
         guard let info = FrameCalibrationInfo.fromJson(data: asset.info()) else {
             return nil
         }

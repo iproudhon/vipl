@@ -552,11 +552,62 @@ class PointCloud2 {
         return rotationMatrix
     }
 
-    private func build() {
+    private func build(heatmap: Bool = false) {
         guard let depths = self.depths,
               let colors = self.colors else { return }
-
         let rotationMatrix = self.getGravityRotationMatrix()
+        var rgbs: [(UInt8, UInt8, UInt8)] = []
+
+        if heatmap {
+            rgbs = PointCloud2.generateHeatmapRGBGradient()
+        }
+
+        func findCenterY() -> Float {
+            var icx, icy: Int, centerX, centerY, centerZ: Float
+
+            // find center
+            icx = Int(self.cx)
+            icy = Int(self.cy)
+            centerX = Float.nan
+            centerY = Float.nan
+            centerZ = depths[icy * width + icx]
+            if centerZ.isNaN {
+                for y in max(0, icy - 5)...min(height - 1, icy + 5) {
+                    for x in max(0, icx - 5)...min(width - 1, icx + 5) {
+                        let z = depths[y * width + x]
+                        if !z.isNaN {
+                            icx = x
+                            icy = y
+                            centerZ = z
+                            break
+                        }
+                    }
+                    if !centerZ.isNaN {
+                        break
+                    }
+                }
+            }
+            if !centerZ.isNaN {
+                var u = Float(icx), v = Float(icy)
+                u = Float(width) - u
+                var z = -centerZ
+                var pt = simd_float4((u - cx) * z / fx, (v - cy) * z / fy, z, 1.0)
+
+                // Apply the transformation matrix to the point
+                if let transform = rotationMatrix {
+                    pt = simd_mul(transform, pt)
+                }
+                centerX = pt[0]
+                centerY = pt[1]
+                centerZ = pt[2]
+            }
+            return centerY
+        }
+        var centerY:Float = Float.nan
+        if heatmap {
+            centerY = findCenterY()
+        }
+
         var vtxs = [PointCloudVertex]()
         for y in 0..<height {
             for x in 0..<width {
@@ -579,23 +630,26 @@ class PointCloud2 {
                 // Apply the transformation matrix to the point
                 if let transform = rotationMatrix {
                     pt = simd_mul(transform, pt)
+                }
+                if heatmap && !centerY.isNaN && rgbs.count > 0 {
+                    let distanceThreshold: Float = 0.5
+                    // f(-distanceThreshold) = 0
+                    // f(distanceThreshold) = rgbs.count - 1
+                    // a = (rgbs.count - 1) / (distanceThreshold - -distanceThreshold)
 
-                    // dz: -2:r255,b0 <-> 2:r0,b255
-                    // ar = -255 / 4 * dz + 255.0
-                    // ab = 255 / 4 * dz
-                    let miny = Float(-2.0), maxy = Float(2.0)
-                    let dy = Float(pt[1] + 1.0)
-                    var dv = 255 * 2 / (maxy - miny) * dy
-                    dv = max(-255, min(dv, 255))
-                    var ar = Float(0), ab = Float(0)
-                    if dv > 0 {
-                        ar = dv
-                    } else {
-                        ab = -dv
+                    let dy = pt[1] - centerY + distanceThreshold
+                    let a = (Float(rgbs.count) - 1) / (distanceThreshold * 2)
+                    let rgbix = Int(a * dy)
+                    if 0 <= rgbix && rgbix < rgbs.count {
+                        /*
+                        r = rgbs[rgbix].0
+                        g = rgbs[rgbix].1
+                        b = rgbs[rgbix].2
+                         */
+                        r = UInt8(min((Int(r) + Int(rgbs[rgbix].0)) / 2, 255))
+                        g = UInt8(min((Int(g) + Int(rgbs[rgbix].1)) / 2, 255))
+                        b = UInt8(min((Int(b) + Int(rgbs[rgbix].2)) / 2, 255))
                     }
-
-                    // r = UInt8(min(ar + Float(r), 255))
-                    // b = UInt8(min(ab + Float(b), 255))
                 }
 
                 vtxs.append(PointCloudVertex(x: pt[0], y: pt[1], z: pt[2], r: Float(r) / 255.0, g: Float(g) / 255.0, b: Float(b) / 255.0))
@@ -607,9 +661,9 @@ class PointCloud2 {
         }
     }
 
-    public func toSCNNode() -> SCNNode? {
+    public func toSCNNode(heatmap: Bool = false) -> SCNNode? {
         if self.vtxs == nil {
-            build()
+            build(heatmap: heatmap)
         }
         guard let vtxs = self.vtxs else { return nil }
         let vertices = NSData(bytes: vtxs, length: MemoryLayout<PointCloudVertex>.size * vtxs.count)
@@ -707,28 +761,51 @@ class PointCloud2 {
     }
 
     public static func lineNode(from: SCNVector3, to: SCNVector3, width: Float, color: UIColor) -> SCNNode {
-            let dir = SCNVector3Make(to.x - from.x, to.y - from.y, to.z - from.z), len = sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z)
-            let cylinder = SCNCylinder(radius: CGFloat(width), height: CGFloat(len))
-            cylinder.radialSegmentCount = 5
-            cylinder.firstMaterial?.diffuse.contents = color
+        let dir = SCNVector3Make(to.x - from.x, to.y - from.y, to.z - from.z), len = sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z)
+        let cylinder = SCNCylinder(radius: CGFloat(width), height: CGFloat(len))
+        cylinder.radialSegmentCount = 5
+        cylinder.firstMaterial?.diffuse.contents = color
 
-            let node = SCNNode(geometry: cylinder)
-            node.position = SCNVector3Make((from.x + to.x) / 2.0, (from.y + to.y) / 2.0, (from.z + to.z) / 2.0)
-            node.eulerAngles = SCNVector3Make(Float(Double.pi/2), acos((to.z - from.z)/len), atan2(to.y - from.y, to.x - from.x))
+        let node = SCNNode(geometry: cylinder)
+        node.position = SCNVector3Make((from.x + to.x) / 2.0, (from.y + to.y) / 2.0, (from.z + to.z) / 2.0)
+        node.eulerAngles = SCNVector3Make(Float(Double.pi/2), acos((to.z - from.z)/len), atan2(to.y - from.y, to.x - from.x))
 
-            return node
-        }
+        return node
+    }
 
     public static func linesNode(points: [SCNVector3], colors: [UIColor], width: Float) -> SCNNode {
-            let node = SCNNode()
+        let node = SCNNode()
 
-            if points.count > 1 {
-                for i in 1 ..< points.count {
-                    let n = lineNode(from: points[i-1], to: points[i], width: width, color: colors[i-1])
-                    node.addChildNode(n)
-                }
+        if points.count > 1 {
+            for i in 1 ..< points.count {
+                let n = lineNode(from: points[i-1], to: points[i], width: width, color: colors[i-1])
+                node.addChildNode(n)
             }
-
-            return node
         }
+
+        return node
+    }
+
+    public static func generateHeatmapRGBGradient() -> [(UInt8, UInt8, UInt8)] {
+        let colors = [(255, 255, 255), (0, 255, 255), (0, 255, 0), (255, 255, 0), (255, 0, 0)]
+        let indices = [0, 24, 49, 74, 99]
+        var gradient: [(UInt8, UInt8, UInt8)] = []
+
+        for i in 0..<indices.count-1 {
+            let startColor = colors[i]
+            let endColor = colors[i + 1]
+            let startIndex = indices[i]
+            let endIndex = indices[i + 1]
+            let steps = endIndex - startIndex
+
+            for step in 0...steps {
+                let r = UInt8(startColor.0 + (endColor.0 - startColor.0) * step / steps)
+                let g = UInt8(startColor.1 + (endColor.1 - startColor.1) * step / steps)
+                let b = UInt8(startColor.2 + (endColor.2 - startColor.2) * step / steps)
+                gradient.append((r, g, b))
+            }
+        }
+
+        return gradient
+    }
 }

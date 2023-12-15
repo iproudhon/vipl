@@ -93,6 +93,9 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
     private var sceneViewMode: Int = 0
     private var cmdCapturePointCloud: Int = 0
     private let ptcldSem = DispatchSemaphore(value: 1)
+    private var showHeatmap: Bool = false
+    private var freezePointCloud: Bool = false
+
 
     // gravity view stuff
     enum GravityMode {
@@ -879,6 +882,14 @@ extension CaptureViewController {
             self.toggleSceneViewMode()
             self.setupMainMenu()
         }))
+        options.append(UIAction(title: self.freezePointCloud ? "Unfreeze Point Cloud" : "Freeze Point Cloud", state: .off, handler: { item in
+            self.freezePointCloud = !self.freezePointCloud
+            self.setupMainMenu()
+        }))
+        options.append(UIAction(title: self.showHeatmap ? "Disable Surface Heatmap" : "Show Surface Heatmap", state: .off, handler: { item in
+            self.showHeatmap = !self.showHeatmap
+            self.setupMainMenu()
+        }))
 #if false
         if self.cmdCapturePointCloud == 0 {
             str = "Start Point Cloud Capture"
@@ -1608,6 +1619,9 @@ extension CaptureViewController {
     }
 
     func showPointCloud(depthData: AVDepthData, pixelData: CVPixelBuffer, time: CMTime) {
+        if self.freezePointCloud {
+            return
+        }
         if self.ptcldSem.wait(timeout: .now()) != .success {
             return
         }
@@ -1624,7 +1638,7 @@ extension CaptureViewController {
         }
 
         guard let ptcld = PointCloud2.capture(depthData: depthData, colors: self.isMirrored ? pixelData.mirrored()! : pixelData, gravity: gravity),
-              let node = ptcld.toSCNNode() else { return }
+              let node = ptcld.toSCNNode(heatmap: self.showHeatmap) else { return }
         DispatchQueue.main.async {
             if let node = self.sceneView.scene?.rootNode.childNodes.first(where: { node in return
                 node.name == "it"}) {
