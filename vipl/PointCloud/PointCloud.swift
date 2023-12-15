@@ -3,8 +3,10 @@
 //  vipl
 //
 
+import CoreMotion
 import ARKit
 import MetalKit
+import SceneKit
 
 struct FrameCalibrationInfo : Codable {
     var width: Int = 0
@@ -20,6 +22,7 @@ struct FrameCalibrationInfo : Codable {
     var cameraIntrinsics: [[Float]] = [[]]
     var cameraProjectionMatrix: [[Float]] = [[]]
     var cameraViewMatrix: [[Float]] = [[]]
+    var gravity: [Float]? = []
 }
 
 extension FrameCalibrationInfo {
@@ -360,7 +363,7 @@ end_header
         return data
     }
 
-    public static func getFrameCalibrationInfo(calibrationData: AVCameraCalibrationData, width: Int, height: Int, camera: ARCamera?) -> FrameCalibrationInfo {
+    public static func getFrameCalibrationInfo(calibrationData: AVCameraCalibrationData, width: Int, height: Int, camera: ARCamera?, gravity: [Float]?) -> FrameCalibrationInfo {
         func getLensDistortionTable(lookupTable: Data) -> [Float] {
             let count = lookupTable.count / MemoryLayout<Float>.size
             var table: [Float] = Array(repeating: 0, count: count)
@@ -393,6 +396,9 @@ end_header
             info.cameraViewMatrix = FrameCalibrationInfo.toFloats(withSimd4x4: viewMatrix)
         } else {
             info.cameraViewMatrix = FrameCalibrationInfo.toFloats(withSimd4x4: matrix_identity_float4x4)
+        }
+        if let gravity = gravity {
+            info.gravity = gravity
         }
 
         return info
@@ -534,11 +540,23 @@ class PointCloud2 {
     var cy: Float = 0
     var depths: [Float]?
     var colors: [UInt8]?
+    var gravity: CMAcceleration?
+
+    private func getGravityRotationMatrix() -> simd_float4x4? {
+        guard let gravity = self.gravity else { return nil }
+        let normal = simd_float3(Float(gravity.x), Float(gravity.y), Float(gravity.z))
+        let yAxis = simd_float3(0, -1, 0)
+        let rotationAxis = simd_cross(normal, yAxis)
+        let rotationAngle = acos(simd_dot(normal, yAxis) / (simd_length(normal) * simd_length(yAxis)))
+        let rotationMatrix = simd_float4x4(simd_quaternion(rotationAngle, rotationAxis))
+        return rotationMatrix
+    }
 
     private func build() {
         guard let depths = self.depths,
               let colors = self.colors else { return }
 
+        let rotationMatrix = self.getGravityRotationMatrix()
         var vtxs = [PointCloudVertex]()
         for y in 0..<height {
             for x in 0..<width {
@@ -554,9 +572,32 @@ class PointCloud2 {
                 var u = Float(x), v = Float(y)
                 u = Float(width) - u
                 z = -z
-                let pt = simd_float4((u - cx) * z / fx, (v - cy) * z / fy, z, 1.0)
+                var pt = simd_float4((u - cx) * z / fx, (v - cy) * z / fy, z, 1.0)
                 let cix = ix * 4
-                let r = colors[cix+0], g = colors[cix+1], b = colors[cix+2]
+                var r = colors[cix+0], g = colors[cix+1], b = colors[cix+2]
+
+                // Apply the transformation matrix to the point
+                if let transform = rotationMatrix {
+                    pt = simd_mul(transform, pt)
+
+                    // dz: -2:r255,b0 <-> 2:r0,b255
+                    // ar = -255 / 4 * dz + 255.0
+                    // ab = 255 / 4 * dz
+                    let miny = Float(-2.0), maxy = Float(2.0)
+                    let dy = Float(pt[1] + 1.0)
+                    var dv = 255 * 2 / (maxy - miny) * dy
+                    dv = max(-255, min(dv, 255))
+                    var ar = Float(0), ab = Float(0)
+                    if dv > 0 {
+                        ar = dv
+                    } else {
+                        ab = -dv
+                    }
+
+                    // r = UInt8(min(ar + Float(r), 255))
+                    // b = UInt8(min(ab + Float(b), 255))
+                }
+
                 vtxs.append(PointCloudVertex(x: pt[0], y: pt[1], z: pt[2], r: Float(r) / 255.0, g: Float(g) / 255.0, b: Float(b) / 255.0))
             }
 
@@ -602,10 +643,15 @@ class PointCloud2 {
         element.minimumPointScreenSpaceRadius = 1
         element.maximumPointScreenSpaceRadius = 7
         let geom = SCNGeometry(sources: [vertexSource, colorSource], elements: [element])
-        return SCNNode(geometry: geom)
+        let node = SCNNode(geometry: geom)
+
+        if let rotationMatrix = self.getGravityRotationMatrix() {
+            node.transform = SCNMatrix4.init(rotationMatrix.transpose)
+        }
+        return node
     }
 
-    public static func capture(depthData: AVDepthData, colors: CVPixelBuffer) -> PointCloud2? {
+    public static func capture(depthData: AVDepthData, colors: CVPixelBuffer, gravity: CMAcceleration? = nil) -> PointCloud2? {
         guard let calibrationData = depthData.cameraCalibrationData else { return nil }
 
         let ptcld = PointCloud2()
@@ -625,6 +671,7 @@ class PointCloud2 {
             depths = depthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat32).depthDataMap
         }
         ptcld.depths = depths.toFloats()
+        ptcld.gravity = gravity
 
         var resized: CVPixelBuffer = colors
         if CVPixelBufferGetWidth(resized) != width {
@@ -646,4 +693,42 @@ class PointCloud2 {
             bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
         return ctx.makeImage()
     }
+
+    public static func textNode(text: String, color: UIColor) -> SCNNode {
+        let text = SCNText(string: text, extrusionDepth: 2.0)
+        text.firstMaterial?.diffuse.contents = color
+        let textNode = SCNNode(geometry: text)
+        return textNode
+        /*
+        textNode.position = SCNVector3(x: (center.x + cam.x)/2, y: (center.y + cam.y)/2, z: (center.z + cam.z)/2)
+        textNode.scale = SCNVector3(x: 0.0005, y: 0.0005, z: 0.0005)
+        textNode.opacity = 0.9
+         */
+    }
+
+    public static func lineNode(from: SCNVector3, to: SCNVector3, width: Float, color: UIColor) -> SCNNode {
+            let dir = SCNVector3Make(to.x - from.x, to.y - from.y, to.z - from.z), len = sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z)
+            let cylinder = SCNCylinder(radius: CGFloat(width), height: CGFloat(len))
+            cylinder.radialSegmentCount = 5
+            cylinder.firstMaterial?.diffuse.contents = color
+
+            let node = SCNNode(geometry: cylinder)
+            node.position = SCNVector3Make((from.x + to.x) / 2.0, (from.y + to.y) / 2.0, (from.z + to.z) / 2.0)
+            node.eulerAngles = SCNVector3Make(Float(Double.pi/2), acos((to.z - from.z)/len), atan2(to.y - from.y, to.x - from.x))
+
+            return node
+        }
+
+    public static func linesNode(points: [SCNVector3], colors: [UIColor], width: Float) -> SCNNode {
+            let node = SCNNode()
+
+            if points.count > 1 {
+                for i in 1 ..< points.count {
+                    let n = lineNode(from: points[i-1], to: points[i], width: width, color: colors[i-1])
+                    node.addChildNode(n)
+                }
+            }
+
+            return node
+        }
 }

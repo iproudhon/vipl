@@ -5,6 +5,7 @@
 
 import AVFoundation
 import SceneKit
+import CoreMotion
 
 // TODO: obsolete, to be removed
 class PointCloudCollection {
@@ -221,7 +222,10 @@ class PointCloudPlayer: NSObject {
         memcpy(UnsafeMutableRawPointer(mutating: ptcld.depths), asset.depths(), ptcld.width * ptcld.height * MemoryLayout<Float>.size)
         ptcld.colors = Array(repeating: UInt8(0), count: ptcld.width * ptcld.height * 4)
         memcpy(UnsafeMutableRawPointer(mutating: ptcld.colors), asset.colors(), ptcld.width * ptcld.height * 4 * MemoryLayout<UInt8>.size)
-
+        if let gravity = info.gravity,
+           gravity.count == 3 {
+            ptcld.gravity = CMAcceleration(x: Double(gravity[0]), y: Double(gravity[1]), z: Double(gravity[2]))
+        }
         _ = ptcld.toSCNNode()
         if cacheId != nil {
             Cache.Default.set(cacheId!, ptcld as Any)

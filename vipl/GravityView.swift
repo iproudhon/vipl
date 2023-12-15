@@ -11,8 +11,10 @@ import simd
 
 class GravityView: UIView {
     var gravityVector: CMAcceleration?
+    var northDirection: CLLocationDirection?
     var reverse = false
     let gravityColor: CGColor = UIColor.red.cgColor
+    let northColor: CGColor = UIColor.blue.cgColor
     let axisColor: CGColor = UIColor.green.cgColor
     let lineLength: CGFloat = 100
 
@@ -68,10 +70,11 @@ class GravityView: UIView {
         return (nx/nw + bounds.midX, ny/nw + bounds.midY, nz/nw)
     }
 
-    func rotate(x: CGFloat, y: CGFloat, z: CGFloat, pitch: Double, roll: Double) -> (CGFloat, CGFloat) {
+    func rotate(x: CGFloat, y: CGFloat, z: CGFloat, pitch: Double, roll: Double, yaw: Double = 0) -> (CGFloat, CGFloat) {
         var transform = CATransform3DIdentity
         transform = CATransform3DRotate(transform, pitch, 0, 0, 1)
         transform = CATransform3DRotate(transform, roll, 1, 0, 0)
+        transform = CATransform3DRotate(transform, yaw, 0, 1, 0)
 
         let (nx, ny, _) = project(transform: transform, x: x, y: y, z: z)
         return (nx, ny)
@@ -90,7 +93,7 @@ class GravityView: UIView {
     override func draw(_ rect: CGRect) {
         super.draw(rect)
 
-        var pitch = Double(0), roll = Double(0)
+        var pitch = Double(0), roll = Double(0), yaw = Double(0)
         var deltaX: CGFloat = 0, deltaY: CGFloat = 0
 
         // pitch and roll from the gravity vector
@@ -118,6 +121,7 @@ class GravityView: UIView {
             if self.reverse {
                 pitch = 0
                 roll = 0
+
                 deltaX = 0
                 deltaY = 0
             } else {
@@ -131,6 +135,10 @@ class GravityView: UIView {
 
             // let pitchD = pitch * 180 / .pi, rollD = roll * 180 / .pi
             // print("XXX: pitch=\(String(format: "%.2f", pitchD)) roll=\(String(format: "%.2f", rollD))")
+        }
+
+        if let northDirection = northDirection {
+            yaw = northDirection * .pi / 180.0
         }
 
         guard let context = UIGraphicsGetCurrentContext() else { return }
@@ -183,15 +191,33 @@ class GravityView: UIView {
             context.strokePath()
         }
 
-/*
-        let m = perspectiveProjectionMatrix(videoFieldOfView: 70.0, aspect: 1.0)
-        let (x1, y1, z1) = project(transform: m, x: 0, y: 0, z: 0.1)
-        print("XXX: \(x1) \(y1) \(z1)")
- */
+        // Draw the north vector
+        if let northDirection = northDirection {
+            let northAngle = -northDirection * .pi / 180.0
+            let x0 = Double(0), y0 = Double(-lineLength / 2)
+            let x1 = x0 * cos(northAngle) - y0 * sin(northAngle)
+            let y1 = x0 * sin(northAngle) + y0 * cos(northAngle)
+
+            context.beginPath()
+            context.setLineWidth(5)
+            context.setAlpha(0.5)
+
+            pt = CGPoint(x: center.x + x1, y: center.y + y1)
+            context.setStrokeColor(northColor)
+            context.move(to: pt)
+            context.addLine(to: center)
+
+            context.strokePath()
+        }
     }
 
-    func update(gravity: CMAcceleration, reverse: Bool = false) {
-        self.gravityVector = gravity
+    func update(gravity: CMAcceleration? = nil, north: CLLocationDirection? = nil, reverse: Bool = false) {
+        if let gravity = gravity {
+            self.gravityVector = gravity
+        }
+        if let north = north {
+            self.northDirection = north
+        }
         self.reverse = reverse
         self.setNeedsDisplay()
     }

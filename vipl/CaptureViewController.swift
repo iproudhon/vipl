@@ -92,6 +92,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
     private var pointClouds: PointCloudCollection?
     private var sceneViewMode: Int = 0
     private var cmdCapturePointCloud: Int = 0
+    private let ptcldSem = DispatchSemaphore(value: 1)
 
     // gravity view stuff
     enum GravityMode {
@@ -217,7 +218,10 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
                 }
             }
         }
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.startUpdatingLocation()
+        locationManager.startUpdatingHeading()
         refreshCapturedVideoView()
     }
 
@@ -238,6 +242,7 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
             }
         }
         locationManager.stopUpdatingLocation()
+        locationManager.stopUpdatingHeading()
         super.viewWillDisappear(animated)
     }
     
@@ -248,6 +253,21 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
     }
 
     private func setupLayout() {
+        switch windowOrientation {
+        case .unknown:
+            break
+        case .portrait:
+            locationManager.headingOrientation = .portrait
+        case .portraitUpsideDown:
+            locationManager.headingOrientation = .portraitUpsideDown
+        case .landscapeLeft:
+            locationManager.headingOrientation = .landscapeLeft
+        case .landscapeRight:
+            locationManager.headingOrientation = .landscapeRight
+        @unknown default:
+            break
+        }
+
         // previewView
         //   overlayView, gravityView
         //   xButton, camerasMenu, menuButton
@@ -293,11 +313,11 @@ class CaptureViewController: UIViewController, AVCaptureVideoDataOutputSampleBuf
         } else {
             // horizontal
             y = view.bounds.height - CGFloat(buttonSize) * 3 / 2
-            // y = self.containerView.frame.origin.y + self.containerView.frame.size.height
-            // y += ((self.containerView.frame.size.height - y) - CGFloat(buttonSize)) / 2
-            // y += ((rect.minY + rect.height - y) - CGFloat(buttonSize)) / 2
         }
         self.recordButton.frame = CGRect(x: x, y: y, width: CGFloat(buttonSize), height: CGFloat(buttonSize))
+
+        self.previewView.layer.transform = CATransform3DIdentity
+        self.gravityView.layer.transform = CATransform3DIdentity
 
         self.refreshSceneView()
     }
@@ -1577,14 +1597,33 @@ extension CaptureViewController {
               let cameraCalibrationData = depthData.cameraCalibrationData else { return }
         let width = CVPixelBufferGetWidth(pixels)
         let height = CVPixelBufferGetHeight(pixels)
-        let info = PointCloud.getFrameCalibrationInfo(calibrationData: cameraCalibrationData, width: width, height: height, camera: nil)
+        var gravity: [Float]?
+        if let g = self.gravity {
+            gravity = [Float(g.x), Float(g.y), Float(g.z)]
+        }
+        let info = PointCloud.getFrameCalibrationInfo(calibrationData: cameraCalibrationData, width: width, height: height, camera: nil, gravity: gravity)
         let jsonInfo = info.toJson()
 
         pointCloudOut.record(time.seconds, info: jsonInfo, count: Int32(width * height), depths: &(depths), colors: &(colors))
     }
 
     func showPointCloud(depthData: AVDepthData, pixelData: CVPixelBuffer, time: CMTime) {
-        guard let ptcld = PointCloud2.capture(depthData: depthData, colors: self.isMirrored ? pixelData.mirrored()! : pixelData),
+        if self.ptcldSem.wait(timeout: .now()) != .success {
+            return
+        }
+
+        // for now for truedepth camera
+        var gravity = self.gravity
+        if self.isMirrored {
+            PointCloud2.interlace = 2
+            if gravity != nil {
+                gravity!.z = -gravity!.z
+            }
+        } else {
+            PointCloud2.interlace = 1
+        }
+
+        guard let ptcld = PointCloud2.capture(depthData: depthData, colors: self.isMirrored ? pixelData.mirrored()! : pixelData, gravity: gravity),
               let node = ptcld.toSCNNode() else { return }
         DispatchQueue.main.async {
             if let node = self.sceneView.scene?.rootNode.childNodes.first(where: { node in return
@@ -1593,6 +1632,7 @@ extension CaptureViewController {
             }
             node.name = "it"
             self.sceneView.scene?.rootNode.addChildNode(node)
+            self.ptcldSem.signal()
         }
     }
 
@@ -1882,8 +1922,27 @@ extension CaptureViewController {
                 self.gravityView.isHidden = self.gravityMode == .tilt
                 self.gravityView.update(gravity: gravity, reverse: true)
 
-                let pitch = atan2(-gravity.y, gravity.x) - .pi / 2.0
-                let roll = atan2(gravity.y, gravity.z) + .pi / 2.0
+                var gx = Double(0), gy = Double(0), gz = Double(0)
+                    gz = gravity.z
+                switch self.windowOrientation {
+                case .portrait, .unknown:
+                    gx = gravity.x
+                    gy = gravity.y
+                case .portraitUpsideDown:
+                    gx = gravity.x
+                    gy = -gravity.y
+                case .landscapeLeft:
+                    gx = gravity.y
+                    gy = -gravity.x
+                case .landscapeRight:
+                    gx = -gravity.y
+                    gy = gravity.x
+                @unknown default:
+                    fatalError()
+                }
+
+                let pitch = atan2(-gy, gx) - .pi / 2.0
+                let roll = atan2(gy, gz) + .pi / 2.0
 
                 var transform = CATransform3DIdentity
                 transform = CATransform3DRotate(transform, -pitch, 0, 0, 1) // Rotate around Z axis for pitch
@@ -1891,5 +1950,33 @@ extension CaptureViewController {
                 self.previewView.layer.transform = transform
             }
         }
+    }
+}
+
+extension CaptureViewController: CLLocationManagerDelegate {
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        // print("XXX: didUpdateLocations: \(locations)")
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        // print("XXX: true: \(newHeading.trueHeading), magnetic: \(newHeading.magneticHeading)")
+        let northDirection = newHeading.magneticHeading
+        DispatchQueue.main.async {
+            switch self.gravityMode {
+            case .none:
+                self.gravityView.isHidden = true
+                self.gravityView.update(north: northDirection, reverse: false)
+            case .grid:
+                self.gravityView.isHidden = false
+                self.gravityView.update(north: northDirection, reverse: false)
+            case .axis, .tilt:
+                self.gravityView.isHidden = self.gravityMode == .tilt
+                self.gravityView.update(north: northDirection, reverse: true)
+            }
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("Capture: location manager didFailWithError: \(error)")
     }
 }
