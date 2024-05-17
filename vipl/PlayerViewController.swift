@@ -33,9 +33,25 @@ Audio Repeat < Play > <> Save
  */
 
 class PlayerViewController: UIViewController, UIImagePickerControllerDelegate, UIDocumentPickerDelegate, UINavigationControllerDelegate, UIScrollViewDelegate {
-    
+
     let player = AVPlayer()
-    let playerItemVideoOutput = AVPlayerItemVideoOutput(pixelBufferAttributes: [String(kCVPixelBufferPixelFormatTypeKey): kCVPixelFormatType_32BGRA])
+    // let playerItemVideoOutput = AVPlayerItemVideoOutput(pixelBufferAttributes: [String(kCVPixelBufferPixelFormatTypeKey): kCVPixelFormatType_32BGRA])
+
+    // Define pixel buffer attributes for HDR content, specifying a color space such as Rec. 2020
+    let attributes = [String(kCVPixelBufferPixelFormatTypeKey): Int(kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange),
+                      String(kCVPixelBufferExtendedPixelsRightKey): 0,
+                      String(kCVPixelBufferExtendedPixelsLeftKey): 0,
+                      String(kCVPixelBufferExtendedPixelsBottomKey): 0,
+                      String(kCVPixelBufferExtendedPixelsTopKey): 0]// as [String : Any]
+
+    // Create an AVPlayerItemVideoOutput with the specified attributes
+    let playerItemVideoOutput = AVPlayerItemVideoOutput(
+        pixelBufferAttributes:
+            [String(kCVPixelBufferPixelFormatTypeKey): Int(kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange),
+             String(kCVPixelBufferExtendedPixelsRightKey): 0,
+             String(kCVPixelBufferExtendedPixelsLeftKey): 0,
+             String(kCVPixelBufferExtendedPixelsBottomKey): 0,
+             String(kCVPixelBufferExtendedPixelsTopKey): 0])
     let playerItemMetadataOutput = AVPlayerItemMetadataOutput(identifiers: nil)
 
     lazy var displayLink: CADisplayLink = CADisplayLink(target: self, selector: #selector(displayLinkFired(link:)))

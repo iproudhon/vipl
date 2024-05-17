@@ -632,7 +632,7 @@ class PointCloud2 {
                     pt = simd_mul(transform, pt)
                 }
                 if heatmap && !centerY.isNaN && rgbs.count > 0 {
-                    let distanceThreshold: Float = 0.5
+                    let distanceThreshold: Float = 0.1
                     // f(-distanceThreshold) = 0
                     // f(distanceThreshold) = rgbs.count - 1
                     // a = (rgbs.count - 1) / (distanceThreshold - -distanceThreshold)
@@ -700,7 +700,7 @@ class PointCloud2 {
         let node = SCNNode(geometry: geom)
 
         if let rotationMatrix = self.getGravityRotationMatrix() {
-            node.transform = SCNMatrix4.init(rotationMatrix.transpose)
+            // node.transform = SCNMatrix4.init(rotationMatrix.transpose)
         }
         return node
     }

@@ -94,6 +94,7 @@
 		85EB33F32968F85C00604B6C /* AVDepthData+Utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85EB33F22968F85C00604B6C /* AVDepthData+Utils.swift */; };
 		85EB33F629690F5D00604B6C /* PointCloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85EB33F529690F5D00604B6C /* PointCloud.swift */; };
 		85EB33F829696B2A00604B6C /* CVPixelBuffer+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85EB33F729696B2A00604B6C /* CVPixelBuffer+Extension.swift */; };
+		85F4CDB22B3E2872000F6088 /* CaptureViewController+PoseTrigger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85F4CDB12B3E2872000F6088 /* CaptureViewController+PoseTrigger.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -221,6 +222,7 @@
 		85EB33F22968F85C00604B6C /* AVDepthData+Utils.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "AVDepthData+Utils.swift"; sourceTree = "<group>"; };
 		85EB33F529690F5D00604B6C /* PointCloud.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloud.swift; sourceTree = "<group>"; };
 		85EB33F729696B2A00604B6C /* CVPixelBuffer+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CVPixelBuffer+Extension.swift"; sourceTree = "<group>"; };
+		85F4CDB12B3E2872000F6088 /* CaptureViewController+PoseTrigger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CaptureViewController+PoseTrigger.swift"; sourceTree = "<group>"; };
 		B3E4F6BF0B19270CB2690F38 /* Pods-vipl.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-vipl.debug.xcconfig"; path = "Target Support Files/Pods-vipl/Pods-vipl.debug.xcconfig"; sourceTree = "<group>"; };
 		E8397AA763B148BFCC732764 /* Pods-vipl.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-vipl.release.xcconfig"; path = "Target Support Files/Pods-vipl/Pods-vipl.release.xcconfig"; sourceTree = "<group>"; };
 		F716EB324AD3784008B18843 /* Pods_vipl.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_vipl.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -368,6 +370,8 @@
 				851040D52951B1FE00320EC7 /* RangeSlider.swift */,
 				858EABDC2A30049A00C81389 /* GravityView.swift */,
 				8565567D2A4BC50A00390708 /* ThumbnailCache.swift */,
+				857D12BB29738406006A8BE5 /* PlayerViewController+Gesture.swift */,
+				85F4CDB12B3E2872000F6088 /* CaptureViewController+PoseTrigger.swift */,
 				85AC1B11293EBAEF00CA4556 /* Assets.xcassets */,
 				85AC1B16293EBAEF00CA4556 /* Info.plist */,
 				85C8C68A295FCEAA00012236 /* CoreMLHelpers */,
@@ -377,7 +381,6 @@
 				85104100295F5F3A00320EC7 /* PoseNet */,
 				85EB33E72968E88100604B6C /* Shaders */,
 				85A501E12962720D005F2382 /* Utils */,
-				857D12BB29738406006A8BE5 /* PlayerViewController+Gesture.swift */,
 			);
 			path = vipl;
 			sourceTree = "<group>";
@@ -698,6 +701,7 @@
 				85C8C69E295FCECD00012236 /* CVPixelBuffer+Resize.swift in Sources */,
 				85C8C64D295F76F300012236 /* PoseNet.swift in Sources */,
 				851040E5295C1AD900320EC7 /* OverlayView.swift in Sources */,
+				85F4CDB22B3E2872000F6088 /* CaptureViewController+PoseTrigger.swift in Sources */,
 				85AC1B09293EBAEE00CA4556 /* AppDelegate.swift in Sources */,
 				85C8C652295F77BE00012236 /* PoseNetMobileNet100S16FP16.mlmodel in Sources */,
 				85C8C6A6295FCECD00012236 /* CGImage+CVPixelBuffer.swift in Sources */,
